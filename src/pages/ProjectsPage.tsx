@@ -10,6 +10,8 @@ import {
   Upload,
 } from 'lucide-react';
 import { useRef, useState } from 'react';
+import { ModalTransition, ScrollReveal } from '../components/MotionPrimitives';
+import { StudioButton } from '../components/StudioButton';
 import {
   exportProjectFile,
   formatBytes,
@@ -114,19 +116,19 @@ export function ProjectsPage() {
             <Download className="w-3.5 h-3.5 text-[#8B5CF6]" />
             Export Current .mixora
           </button>
-          <button
-            type="button"
+          <StudioButton
+            variant="primary"
+            size="sm"
             onClick={() => void saveCurrentProjectLocally()}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] text-xs font-medium text-[#F8FAFC]"
           >
             <Save className="w-3.5 h-3.5" />
             Save Current Session
-          </button>
+          </StudioButton>
         </div>
       </div>
 
       {/* Active Workspace Bar */}
-      <div className="bg-[#14141D] border border-[#292938] rounded-lg p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <ScrollReveal className="bg-[#14141D] border border-[#292938] rounded-lg p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <p className="text-xs text-[#94A3B8]">Current Open Workspace</p>
           <p className="text-base font-semibold text-[#F8FAFC] mt-0.5">{projectName}</p>
@@ -144,10 +146,10 @@ export function ProjectsPage() {
           />
           Auto-save timeline metadata to local IndexedDB
         </label>
-      </div>
+      </ScrollReveal>
 
       {/* Saved Projects List */}
-      <div className="space-y-3">
+      <ScrollReveal delay={0.05} className="space-y-3">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-base font-semibold text-[#F8FAFC]">
             Saved Local Projects ({savedProjects.length})
@@ -203,13 +205,13 @@ export function ProjectsPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2 shrink-0">
-                  <button
-                    type="button"
+                  <StudioButton
+                    variant="primary"
+                    size="xs"
                     onClick={() => loadProjectIntoWorkspace(proj)}
-                    className="px-3 py-1.5 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] text-xs font-medium text-[#F8FAFC]"
                   >
                     Reopen
-                  </button>
+                  </StudioButton>
                   <button
                     type="button"
                     onClick={() => {
@@ -250,10 +252,10 @@ export function ProjectsPage() {
             ))}
           </div>
         )}
-      </div>
+      </ScrollReveal>
 
       {/* Privacy & Data Controls */}
-      <div className="bg-[#14141D] border border-[#292938] rounded-lg p-6 space-y-4">
+      <ScrollReveal delay={0.08} className="bg-[#14141D] border border-[#292938] rounded-lg p-6 space-y-4">
         <div className="flex items-center gap-2 text-sm font-semibold text-[#F8FAFC]">
           <HardDrive className="w-4 h-4 text-[#F59E0B]" />
           Privacy & Local Memory Controls
@@ -286,45 +288,43 @@ export function ProjectsPage() {
             Clear All Cached Data
           </button>
         </div>
-      </div>
+      </ScrollReveal>
 
       {/* Privacy Notice Confirmation Modal */}
-      {confirmAction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
-          <div className="bg-[#14141D] border border-[#292938] rounded-xl max-w-md w-full p-6 space-y-4">
-            <div className="flex items-center gap-3">
-              <AlertTriangle className="w-5 h-5 text-[#F59E0B] shrink-0" />
-              <h3 className="font-display text-lg font-semibold text-[#F8FAFC]">
-                Privacy & Data Clearance Notice
-              </h3>
-            </div>
-            <p className="text-sm text-[#94A3B8] leading-relaxed">
-              {confirmAction === 'workspace' &&
-                'This releases all loaded audio buffers, video Blob URLs, and active edits from browser memory. Saved projects in IndexedDB are untouched.'}
-              {confirmAction === 'projects' &&
-                'This permanently deletes all saved MIXORA projects stored in this browser. Export any .mixora files you wish to keep before continuing.'}
-              {confirmAction === 'all' &&
-                'This clears your active workspace memory, all saved local projects, custom color presets, and browser preferences stored by MIXORA.'}
-            </p>
-            <div className="flex items-center justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setConfirmAction(null)}
-                className="px-4 py-2 rounded-md bg-[#1B1B27] hover:bg-[#292938] text-xs font-medium text-[#F8FAFC]"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={() => void executeConfirm()}
-                className="px-4 py-2 rounded-md bg-[#F43F5E] hover:bg-[#E11D48] text-xs font-medium text-[#F8FAFC]"
-              >
-                Confirm Clear
-              </button>
-            </div>
+      <ModalTransition open={confirmAction != null} onBackdropClick={() => setConfirmAction(null)}>
+        <div className="bg-[#14141D] border border-[#292938] rounded-xl w-full p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <AlertTriangle className="w-5 h-5 text-[#F59E0B] shrink-0" />
+            <h3 className="font-display text-lg font-semibold text-[#F8FAFC]">
+              Privacy & Data Clearance Notice
+            </h3>
+          </div>
+          <p className="text-sm text-[#94A3B8] leading-relaxed">
+            {confirmAction === 'workspace' &&
+              'This releases all loaded audio buffers, video Blob URLs, and active edits from browser memory. Saved projects in IndexedDB are untouched.'}
+            {confirmAction === 'projects' &&
+              'This permanently deletes all saved MIXORA projects stored in this browser. Export any .mixora files you wish to keep before continuing.'}
+            {confirmAction === 'all' &&
+              'This clears your active workspace memory, all saved local projects, custom color presets, and browser preferences stored by MIXORA.'}
+          </p>
+          <div className="flex items-center justify-end gap-2 pt-2">
+            <button
+              type="button"
+              onClick={() => setConfirmAction(null)}
+              className="px-4 py-2 rounded-md bg-[#1B1B27] hover:bg-[#292938] text-xs font-medium text-[#F8FAFC]"
+            >
+              Cancel
+            </button>
+            <StudioButton
+              variant="danger"
+              size="sm"
+              onClick={() => void executeConfirm()}
+            >
+              Confirm Clear
+            </StudioButton>
           </div>
         </div>
-      )}
+      </ModalTransition>
     </div>
   );
 }

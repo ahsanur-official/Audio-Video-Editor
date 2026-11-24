@@ -1,5 +1,8 @@
 import { AudioWaveform, Download, Film, Image as ImageIcon, Loader2, Upload } from 'lucide-react';
+import { motion } from 'motion/react';
 import { useRef, useState } from 'react';
+import { STUDIO_EASE, TabContentTransition } from '../components/MotionPrimitives';
+import { StudioButton } from '../components/StudioButton';
 import { trackAnonymousEvent } from '../engines/analyticsClient';
 import { enhanceAndNormalizeAudio } from '../engines/audioAnalysis';
 import {
@@ -46,6 +49,9 @@ export function MediaToolsPage() {
   const [imgQuality, setImgQuality] = useState(0.9);
   const [thumbHeadline, setThumbHeadline] = useState('');
   const imageCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const audioInputRef = useRef<HTMLInputElement | null>(null);
+  const videoInputRef = useRef<HTMLInputElement | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
 
   const handleLoadAudioUtilityFiles = async (files: FileList | null) => {
     if (!files || files.length === 0) return;
@@ -300,23 +306,32 @@ export function MediaToolsPage() {
             { id: 'image' as const, label: 'Image', icon: ImageIcon },
           ].map((item) => {
             const Icon = item.icon;
+            const active = tab === item.id;
             return (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => setTab(item.id)}
-                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded text-xs font-medium ${
-                  tab === item.id ? 'bg-[#8B5CF6] text-[#F8FAFC]' : 'text-[#94A3B8] hover:text-[#F8FAFC]'
+                className={`relative inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded text-xs font-medium transition-colors ${
+                  active ? 'text-[#F8FAFC]' : 'text-[#94A3B8] hover:text-[#F8FAFC]'
                 }`}
               >
-                <Icon className="w-3.5 h-3.5" />
-                {item.label}
+                {active && (
+                  <motion.span
+                    layoutId="media-tools-tab-bg"
+                    transition={{ duration: 0.22, ease: STUDIO_EASE }}
+                    className="absolute inset-0 rounded bg-[#8B5CF6]"
+                  />
+                )}
+                <Icon className="relative z-10 w-3.5 h-3.5" />
+                <span className="relative z-10">{item.label}</span>
               </button>
             );
           })}
         </div>
       </div>
 
+      <TabContentTransition tabKey={tab}>
       {tab === 'audio' && (
         <div className="bg-[#14141D] border border-[#292938] rounded-xl p-6 space-y-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
@@ -328,17 +343,22 @@ export function MediaToolsPage() {
                 Select 1 file to trim/convert/normalize, or select multiple files to merge them sequentially.
               </p>
             </div>
-            <label className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] text-xs font-medium text-[#F8FAFC] cursor-pointer">
+            <input
+              ref={audioInputRef}
+              type="file"
+              accept=".mp3,.wav,.flac,.ogg,.aac,.m4a,audio/*"
+              multiple
+              onChange={(e) => void handleLoadAudioUtilityFiles(e.target.files)}
+              className="hidden"
+            />
+            <StudioButton
+              variant="primary"
+              size="sm"
+              onClick={() => audioInputRef.current?.click()}
+            >
               <Upload className="w-3.5 h-3.5" />
               Select Audio File(s)
-              <input
-                type="file"
-                accept=".mp3,.wav,.flac,.ogg,.aac,.m4a,audio/*"
-                multiple
-                onChange={(e) => void handleLoadAudioUtilityFiles(e.target.files)}
-                className="hidden"
-              />
-            </label>
+            </StudioButton>
           </div>
 
           {audioFiles.length > 0 && audioBufs.length > 0 && (
@@ -431,15 +451,16 @@ export function MediaToolsPage() {
                 </label>
               </div>
 
-              <button
-                type="button"
+              <StudioButton
+                variant="audio"
+                size="sm"
                 disabled={busy}
                 onClick={() => void handleProcessAudioUtility()}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md bg-[#22D3EE] hover:bg-[#06B6D4] text-xs font-semibold text-[#09090D] disabled:opacity-40"
+                className="px-5 py-2.5"
               >
                 {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
                 {audioBufs.length > 1 ? 'Merge & Download' : 'Convert & Download'}
-              </button>
+              </StudioButton>
             </div>
           )}
         </div>
@@ -456,16 +477,21 @@ export function MediaToolsPage() {
                 All transcoding runs locally using browser-native codecs.
               </p>
             </div>
-            <label className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] text-xs font-medium text-[#F8FAFC] cursor-pointer">
+            <input
+              ref={videoInputRef}
+              type="file"
+              accept=".mp4,.webm,.mov,video/*"
+              onChange={(e) => void handleLoadVideoUtility(e.target.files?.[0])}
+              className="hidden"
+            />
+            <StudioButton
+              variant="primary"
+              size="sm"
+              onClick={() => videoInputRef.current?.click()}
+            >
               <Upload className="w-3.5 h-3.5" />
               Select Video File
-              <input
-                type="file"
-                accept=".mp4,.webm,.mov,video/*"
-                onChange={(e) => void handleLoadVideoUtility(e.target.files?.[0])}
-                className="hidden"
-              />
-            </label>
+            </StudioButton>
           </div>
 
           {videoFile && videoMeta && (
@@ -502,23 +528,23 @@ export function MediaToolsPage() {
                 </div>
 
                 <div className="flex flex-wrap gap-2">
-                  <button
-                    type="button"
+                  <StudioButton
+                    variant="primary"
+                    size="sm"
                     disabled={busy}
                     onClick={() => void handleTranscodeResizeVideo()}
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] font-medium text-[#F8FAFC] disabled:opacity-40"
                   >
                     {busy && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                     Resize & Convert Video
-                  </button>
-                  <button
-                    type="button"
+                  </StudioButton>
+                  <StudioButton
+                    variant="audio"
+                    size="sm"
                     disabled={busy}
                     onClick={() => void handleVideoToAudio('mp3')}
-                    className="px-4 py-2 rounded-md bg-[#22D3EE] font-semibold text-[#09090D] disabled:opacity-40"
                   >
                     Video → MP3
-                  </button>
+                  </StudioButton>
                   <button
                     type="button"
                     disabled={busy}
@@ -554,16 +580,21 @@ export function MediaToolsPage() {
                 Resize, crop, add a thumbnail headline banner, and convert between PNG, JPEG, and WebP.
               </p>
             </div>
-            <label className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] text-xs font-medium text-[#F8FAFC] cursor-pointer">
+            <input
+              ref={imageInputRef}
+              type="file"
+              accept="image/*"
+              onChange={(e) => handleLoadImage(e.target.files?.[0])}
+              className="hidden"
+            />
+            <StudioButton
+              variant="primary"
+              size="sm"
+              onClick={() => imageInputRef.current?.click()}
+            >
               <Upload className="w-3.5 h-3.5" />
               Select Image
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleLoadImage(e.target.files?.[0])}
-                className="hidden"
-              />
-            </label>
+            </StudioButton>
           </div>
 
           {imageEl && (
@@ -691,19 +722,21 @@ export function MediaToolsPage() {
                   </label>
                 </div>
 
-                <button
-                  type="button"
+                <StudioButton
+                  variant="audio"
+                  size="sm"
                   onClick={handleDownloadImage}
-                  className="w-full inline-flex items-center justify-center gap-2 py-2.5 rounded-md bg-[#22D3EE] hover:bg-[#06B6D4] font-semibold text-[#09090D]"
+                  className="w-full py-2.5"
                 >
                   <Download className="w-4 h-4" />
                   Export Image
-                </button>
+                </StudioButton>
               </div>
             </div>
           )}
         </div>
       )}
+      </TabContentTransition>
     </div>
   );
 }

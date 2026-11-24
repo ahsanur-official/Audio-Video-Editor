@@ -10,6 +10,8 @@ import {
   Wand2,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { ScrollReveal, StaggerGroup, StaggerItem } from '../components/MotionPrimitives';
+import { StudioButton } from '../components/StudioButton';
 import { WaveformCanvas } from '../components/WaveformCanvas';
 import { trackAnonymousEvent } from '../engines/analyticsClient';
 import {
@@ -341,24 +343,24 @@ export function MashupCreatorPage() {
           >
             Load Compatible Demo Pair
           </button>
-          <button
-            type="button"
+          <StudioButton
+            variant="primary"
+            size="sm"
             onClick={togglePreview}
             disabled={!slotA && !slotB}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] text-xs font-semibold text-[#F8FAFC] disabled:opacity-40"
           >
             {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
             {isPlaying ? 'Stop Preview' : 'Preview Mashup'}
-          </button>
-          <button
-            type="button"
+          </StudioButton>
+          <StudioButton
+            variant="audio"
+            size="sm"
             onClick={() => void handleExportMashup('mp3')}
             disabled={!slotA || !slotB || exporting != null}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md bg-[#22D3EE] hover:bg-[#06B6D4] text-xs font-semibold text-[#09090D] disabled:opacity-40"
           >
             {exporting === 'mp3' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
             Export MP3
-          </button>
+          </StudioButton>
           <button
             type="button"
             onClick={() => void handleExportMashup('wav')}
@@ -372,14 +374,14 @@ export function MashupCreatorPage() {
       </div>
 
       {/* Dual Track Importers & Analyzers */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <StaggerGroup className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {(['A', 'B'] as const).map((which) => {
           const slot = which === 'A' ? slotA : slotB;
           const inputRef = which === 'A' ? inputARef : inputBRef;
           const accent = which === 'A' ? '#22D3EE' : '#8B5CF6';
 
           return (
-            <div key={which} className="bg-[#14141D] border border-[#292938] rounded-xl p-5 space-y-4">
+            <StaggerItem key={which} className="bg-[#14141D] border border-[#292938] rounded-xl p-5 space-y-4">
               <div className="flex items-center justify-between gap-2">
                 <h2 className="font-display text-base font-semibold text-[#F8FAFC]">
                   Song {which} {slot ? `— ${slot.name}` : ''}
@@ -498,14 +500,14 @@ export function MashupCreatorPage() {
                   </div>
                 </>
               )}
-            </div>
+            </StaggerItem>
           );
         })}
-      </div>
+      </StaggerGroup>
 
       {/* Smart Mashup Assistant Compatibility & Arrangement Controls */}
       {compatibility && (
-        <section className="bg-[#14141D] border border-[#292938] rounded-xl p-6 space-y-5">
+        <ScrollReveal className="bg-[#14141D] border border-[#292938] rounded-xl p-6 space-y-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-2.5">
               <Sparkles className="w-5 h-5 text-[#A3E635]" />
@@ -519,14 +521,14 @@ export function MashupCreatorPage() {
               </div>
             </div>
 
-            <button
-              type="button"
+            <StudioButton
+              variant="primary"
+              size="sm"
               onClick={applySmartSuggestion}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] text-xs font-semibold text-[#F8FAFC] whitespace-nowrap"
             >
               <Wand2 className="w-3.5 h-3.5" />
               Auto-Align Tempo & Transition
-            </button>
+            </StudioButton>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -594,7 +596,7 @@ export function MashupCreatorPage() {
               />
             </div>
           </div>
-        </section>
+        </ScrollReveal>
       )}
     </div>
   );

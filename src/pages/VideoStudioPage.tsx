@@ -23,8 +23,11 @@ import {
   Upload,
   X,
 } from 'lucide-react';
+import { motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { ColorGradingPanel } from '../components/ColorGradingPanel';
+import { ModalTransition, STUDIO_EASE, TabContentTransition } from '../components/MotionPrimitives';
+import { StudioButton } from '../components/StudioButton';
 import { trackAnonymousEvent } from '../engines/analyticsClient';
 import {
   decodeAudioFile,
@@ -695,15 +698,16 @@ export function VideoStudioPage() {
       {/* Top Toolbar */}
       <div className="bg-[#14141D] border-b border-[#292938] px-4 py-2 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <button
-            type="button"
+          <StudioButton
+            variant="primary"
+            size="xs"
             onClick={() => (isPlaying ? pauseAllVideos() : setIsPlaying(true))}
             disabled={videoClips.length === 0}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] text-xs font-semibold text-[#F8FAFC] disabled:opacity-40"
+            className="px-3.5"
           >
             {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
             {isPlaying ? 'Pause' : 'Play'}
-          </button>
+          </StudioButton>
           <button
             type="button"
             onClick={() => {
@@ -794,15 +798,16 @@ export function VideoStudioPage() {
           >
             <Maximize2 className="w-3.5 h-3.5" />
           </button>
-          <button
-            type="button"
+          <StudioButton
+            variant="audio"
+            size="xs"
             onClick={() => setExportOpen(true)}
             disabled={videoClips.length === 0}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-[#22D3EE] hover:bg-[#06B6D4] text-xs font-semibold text-[#09090D] disabled:opacity-40"
+            className="px-3.5"
           >
             <Download className="w-3.5 h-3.5" />
             Export Video
-          </button>
+          </StudioButton>
         </div>
       </div>
 
@@ -845,13 +850,13 @@ export function VideoStudioPage() {
                   </p>
                 </div>
                 <div className="flex flex-wrap justify-center gap-2">
-                  <button
-                    type="button"
+                  <StudioButton
+                    variant="primary"
+                    size="sm"
                     onClick={() => fileInputRef.current?.click()}
-                    className="px-4 py-2 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] text-xs font-medium text-[#F8FAFC]"
                   >
                     Choose Video Files
-                  </button>
+                  </StudioButton>
                   <button
                     type="button"
                     onClick={() => void handleGenerateSample()}
@@ -1039,25 +1044,34 @@ export function VideoStudioPage() {
               { id: 'audio' as const, label: 'Audio', icon: AudioLines },
             ].map((t) => {
               const Icon = t.icon;
+              const active = inspectorTab === t.id;
               return (
                 <button
                   key={t.id}
                   type="button"
                   onClick={() => setInspectorTab(t.id)}
-                  className={`flex items-center justify-center gap-1 py-1.5 rounded text-xs font-medium transition-colors ${
-                    inspectorTab === t.id
-                      ? 'bg-[#8B5CF6] text-[#F8FAFC]'
+                  className={`relative flex items-center justify-center gap-1 py-1.5 rounded text-xs font-medium transition-colors ${
+                    active
+                      ? 'text-[#F8FAFC]'
                       : 'text-[#94A3B8] hover:text-[#F8FAFC] hover:bg-[#1B1B27]'
                   }`}
                 >
-                  <Icon className="w-3.5 h-3.5" />
-                  <span>{t.label}</span>
+                  {active && (
+                    <motion.span
+                      layoutId="video-inspector-tab-bg"
+                      transition={{ duration: 0.2, ease: STUDIO_EASE }}
+                      className="absolute inset-0 rounded bg-[#8B5CF6]"
+                    />
+                  )}
+                  <Icon className="relative z-10 w-3.5 h-3.5" />
+                  <span className="relative z-10">{t.label}</span>
                 </button>
               );
             })}
           </div>
 
           <div className="flex-1 overflow-y-auto p-4">
+            <TabContentTransition tabKey={inspectorTab}>
             {inspectorTab === 'color' && (
               <ColorGradingPanel
                 compareSplit={compareSplit}
@@ -1401,13 +1415,14 @@ export function VideoStudioPage() {
                   onChange={(e) => void handleLoadBgAudio(e)}
                   className="hidden"
                 />
-                <button
-                  type="button"
+                <StudioButton
+                  variant="primary"
+                  size="sm"
                   onClick={() => bgAudioInputRef.current?.click()}
-                  className="w-full py-2.5 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] font-medium text-[#F8FAFC]"
+                  className="w-full py-2.5"
                 >
                   {bgAudio ? 'Replace Background Music' : 'Attach Local Music / Audio'}
-                </button>
+                </StudioButton>
 
                 {bgAudio && (
                   <div className="bg-[#09090D] border border-[#292938] rounded-lg p-3 space-y-2.5">
@@ -1440,14 +1455,14 @@ export function VideoStudioPage() {
                 )}
               </div>
             )}
+            </TabContentTransition>
           </div>
         </aside>
       </div>
 
       {/* Video Export Modal */}
-      {exportOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4">
-          <div className="bg-[#14141D] border border-[#292938] rounded-xl max-w-md w-full p-6 space-y-4">
+      <ModalTransition open={exportOpen} onBackdropClick={() => exportProgress == null && setExportOpen(false)}>
+        <div className="bg-[#14141D] border border-[#292938] rounded-xl w-full p-6 space-y-4">
             <h3 className="font-display text-lg font-semibold text-[#F8FAFC]">Export Graded Video</h3>
             <p className="text-xs text-[#94A3B8]">
               Only codecs genuinely supported by your browser&apos;s MediaRecorder are shown below.
@@ -1539,15 +1554,15 @@ export function VideoStudioPage() {
 
             <div className="flex items-center justify-end gap-2 pt-2">
               {exportProgress != null ? (
-                <button
-                  type="button"
+                <StudioButton
+                  variant="danger"
+                  size="sm"
                   onClick={() => {
                     cancelExportRef.current = true;
                   }}
-                  className="px-4 py-2 rounded-md bg-[#F43F5E] text-xs font-medium text-[#F8FAFC]"
                 >
                   Cancel Export
-                </button>
+                </StudioButton>
               ) : (
                 <>
                   <button
@@ -1557,20 +1572,19 @@ export function VideoStudioPage() {
                   >
                     Close
                   </button>
-                  <button
-                    type="button"
+                  <StudioButton
+                    variant="primary"
+                    size="sm"
                     disabled={!exportMime}
                     onClick={() => void handleExportVideo()}
-                    className="px-4 py-2 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] text-xs font-semibold text-[#F8FAFC] disabled:opacity-40"
                   >
                     Render & Download
-                  </button>
+                  </StudioButton>
                 </>
               )}
             </div>
-          </div>
         </div>
-      )}
+      </ModalTransition>
     </div>
   );
 }

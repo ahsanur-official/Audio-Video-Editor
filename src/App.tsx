@@ -38,10 +38,17 @@ const AdminPage = lazy(() =>
 );
 
 const ROUTE_TRANSITION = {
-  initial: { opacity: 0, y: 6 },
+  initial: { opacity: 0, y: 14, scale: 0.992 },
+  animate: { opacity: 1, y: 0, scale: 1 },
+  exit: { opacity: 0, y: -10, scale: 0.995 },
+  transition: { duration: 0.26, ease: [0.22, 1, 0.36, 1] as const },
+};
+
+const SHELL_TRANSITION = {
+  initial: { opacity: 0, y: 10 },
   animate: { opacity: 1, y: 0 },
-  exit: { opacity: 0, y: -4 },
-  transition: { duration: 0.18, ease: [0.16, 1, 0.3, 1] as const },
+  exit: { opacity: 0, y: -8 },
+  transition: { duration: 0.24, ease: [0.22, 1, 0.36, 1] as const },
 };
 
 function RouteLoadingFallback() {
@@ -60,6 +67,12 @@ export default function App() {
   useEffect(() => {
     void initApp();
   }, [initApp]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+  }, [route]);
+
+  const shellKey = route === 'home' ? 'home' : route === 'admin' ? 'admin' : 'studio';
 
   const renderWorkspace = () => {
     switch (route) {
@@ -88,25 +101,29 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion="user">
-      {route === 'home' ? (
-        <motion.div key="home-shell" {...ROUTE_TRANSITION}>
-          <HomePage />
-        </motion.div>
-      ) : route === 'admin' ? (
-        <motion.div key="admin-shell" {...ROUTE_TRANSITION}>
-          <Suspense fallback={<RouteLoadingFallback />}>
-            <AdminPage />
-          </Suspense>
-        </motion.div>
-      ) : (
-        <StudioLayout>
-          <AnimatePresence mode="wait">
-            <motion.div key={route} {...ROUTE_TRANSITION}>
-              <Suspense fallback={<RouteLoadingFallback />}>{renderWorkspace()}</Suspense>
-            </motion.div>
-          </AnimatePresence>
-        </StudioLayout>
-      )}
+      <AnimatePresence mode="wait">
+        {shellKey === 'home' ? (
+          <motion.div key="home-shell" {...SHELL_TRANSITION}>
+            <HomePage />
+          </motion.div>
+        ) : shellKey === 'admin' ? (
+          <motion.div key="admin-shell" {...SHELL_TRANSITION}>
+            <Suspense fallback={<RouteLoadingFallback />}>
+              <AdminPage />
+            </Suspense>
+          </motion.div>
+        ) : (
+          <motion.div key="studio-shell" {...SHELL_TRANSITION}>
+            <StudioLayout>
+              <AnimatePresence mode="wait">
+                <motion.div key={route} {...ROUTE_TRANSITION}>
+                  <Suspense fallback={<RouteLoadingFallback />}>{renderWorkspace()}</Suspense>
+                </motion.div>
+              </AnimatePresence>
+            </StudioLayout>
+          </motion.div>
+        )}
+      </AnimatePresence>
       <ToastContainer />
     </MotionConfig>
   );

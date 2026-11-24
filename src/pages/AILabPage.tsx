@@ -10,7 +10,16 @@ import {
   Square,
   Upload,
 } from 'lucide-react';
+import { motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
+import {
+  ScrollReveal,
+  STUDIO_EASE,
+  StaggerGroup,
+  StaggerItem,
+  TabContentTransition,
+} from '../components/MotionPrimitives';
+import { StudioButton } from '../components/StudioButton';
 import { WaveformCanvas } from '../components/WaveformCanvas';
 import { trackAnonymousEvent } from '../engines/analyticsClient';
 import {
@@ -250,26 +259,33 @@ export function AILabPage() {
         </div>
 
         <div className="flex items-center gap-1 bg-[#14141D] p-1 rounded-md border border-[#292938] self-start">
-          <button
-            type="button"
-            onClick={() => setTab('audio')}
-            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded text-xs font-medium ${
-              tab === 'audio' ? 'bg-[#8B5CF6] text-[#F8FAFC]' : 'text-[#94A3B8] hover:text-[#F8FAFC]'
-            }`}
-          >
-            <AudioWaveform className="w-3.5 h-3.5" />
-            Audio Lab
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab('video')}
-            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded text-xs font-medium ${
-              tab === 'video' ? 'bg-[#8B5CF6] text-[#F8FAFC]' : 'text-[#94A3B8] hover:text-[#F8FAFC]'
-            }`}
-          >
-            <Film className="w-3.5 h-3.5" />
-            Video Lab
-          </button>
+          {[
+            { id: 'audio' as const, label: 'Audio Lab', icon: AudioWaveform },
+            { id: 'video' as const, label: 'Video Lab', icon: Film },
+          ].map((item) => {
+            const Icon = item.icon;
+            const active = tab === item.id;
+            return (
+              <button
+                key={item.id}
+                type="button"
+                onClick={() => setTab(item.id)}
+                className={`relative inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded text-xs font-medium transition-colors ${
+                  active ? 'text-[#F8FAFC]' : 'text-[#94A3B8] hover:text-[#F8FAFC]'
+                }`}
+              >
+                {active && (
+                  <motion.span
+                    layoutId="ai-lab-tab-bg"
+                    transition={{ duration: 0.22, ease: STUDIO_EASE }}
+                    className="absolute inset-0 rounded bg-[#8B5CF6]"
+                  />
+                )}
+                <Icon className="relative z-10 w-3.5 h-3.5" />
+                <span className="relative z-10">{item.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -295,6 +311,7 @@ export function AILabPage() {
         </div>
       )}
 
+      <TabContentTransition tabKey={tab}>
       {tab === 'audio' ? (
         <div className="space-y-6">
           {/* Audio Input */}
@@ -316,14 +333,14 @@ export function AILabPage() {
                   onChange={(e) => void handleAudioUpload(e.target.files?.[0])}
                   className="hidden"
                 />
-                <button
-                  type="button"
+                <StudioButton
+                  variant="primary"
+                  size="sm"
                   onClick={() => audioInputRef.current?.click()}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] text-xs font-medium text-[#F8FAFC]"
                 >
                   <Upload className="w-3.5 h-3.5" />
                   Upload Audio
-                </button>
+                </StudioButton>
                 <button
                   type="button"
                   onClick={async () => {
@@ -390,8 +407,8 @@ export function AILabPage() {
           </div>
 
           {/* DSP Processing Tools */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-[#14141D] border border-[#292938] rounded-lg p-5 flex flex-col justify-between gap-4">
+          <StaggerGroup className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StaggerItem className="bg-[#14141D] border border-[#292938] rounded-lg p-5 flex flex-col justify-between gap-4">
               <div>
                 <h3 className="text-sm font-semibold text-[#F8FAFC]">Vocal / Instrumental Split</h3>
                 <p className="text-xs text-[#94A3B8] mt-1 leading-relaxed">
@@ -402,13 +419,13 @@ export function AILabPage() {
                 type="button"
                 disabled={!audioBuffer || processingLabel != null}
                 onClick={() => void runVocalSeparation()}
-                className="w-full py-2 rounded-md bg-[#1B1B27] hover:bg-[#292938] border border-[#292938] text-xs font-medium text-[#F8FAFC] disabled:opacity-40"
+                className="w-full py-2 rounded-md bg-[#1B1B27] hover:bg-[#292938] border border-[#292938] text-xs font-medium text-[#F8FAFC] disabled:opacity-40 transition-colors"
               >
                 Split Vocals & Backing
               </button>
-            </div>
+            </StaggerItem>
 
-            <div className="bg-[#14141D] border border-[#292938] rounded-lg p-5 flex flex-col justify-between gap-4">
+            <StaggerItem className="bg-[#14141D] border border-[#292938] rounded-lg p-5 flex flex-col justify-between gap-4">
               <div>
                 <h3 className="text-sm font-semibold text-[#F8FAFC]">4-Band Stem Separation</h3>
                 <p className="text-xs text-[#94A3B8] mt-1 leading-relaxed">
@@ -419,13 +436,13 @@ export function AILabPage() {
                 type="button"
                 disabled={!audioBuffer || processingLabel != null}
                 onClick={() => void runFourStemSplit()}
-                className="w-full py-2 rounded-md bg-[#1B1B27] hover:bg-[#292938] border border-[#292938] text-xs font-medium text-[#F8FAFC] disabled:opacity-40"
+                className="w-full py-2 rounded-md bg-[#1B1B27] hover:bg-[#292938] border border-[#292938] text-xs font-medium text-[#F8FAFC] disabled:opacity-40 transition-colors"
               >
                 Extract 4 Band Stems
               </button>
-            </div>
+            </StaggerItem>
 
-            <div className="bg-[#14141D] border border-[#292938] rounded-lg p-5 flex flex-col justify-between gap-4">
+            <StaggerItem className="bg-[#14141D] border border-[#292938] rounded-lg p-5 flex flex-col justify-between gap-4">
               <div>
                 <h3 className="text-sm font-semibold text-[#F8FAFC]">Noise Reduction</h3>
                 <p className="text-xs text-[#94A3B8] mt-1 leading-relaxed">
@@ -436,29 +453,30 @@ export function AILabPage() {
                 type="button"
                 disabled={!audioBuffer || processingLabel != null}
                 onClick={() => void runEnhanceAndDenoise(true)}
-                className="w-full py-2 rounded-md bg-[#1B1B27] hover:bg-[#292938] border border-[#292938] text-xs font-medium text-[#F8FAFC] disabled:opacity-40"
+                className="w-full py-2 rounded-md bg-[#1B1B27] hover:bg-[#292938] border border-[#292938] text-xs font-medium text-[#F8FAFC] disabled:opacity-40 transition-colors"
               >
                 Reduce Background Noise
               </button>
-            </div>
+            </StaggerItem>
 
-            <div className="bg-[#14141D] border border-[#292938] rounded-lg p-5 flex flex-col justify-between gap-4">
+            <StaggerItem className="bg-[#14141D] border border-[#292938] rounded-lg p-5 flex flex-col justify-between gap-4">
               <div>
                 <h3 className="text-sm font-semibold text-[#F8FAFC]">Audio Enhancement</h3>
                 <p className="text-xs text-[#94A3B8] mt-1 leading-relaxed">
                   Presence EQ, smooth dynamics compression, and -1.0 dBFS peak loudness normalization.
                 </p>
               </div>
-              <button
-                type="button"
+              <StudioButton
+                variant="primary"
+                size="sm"
                 disabled={!audioBuffer || processingLabel != null}
                 onClick={() => void runEnhanceAndDenoise(false)}
-                className="w-full py-2 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] text-xs font-medium text-[#F8FAFC] disabled:opacity-40"
+                className="w-full"
               >
                 Enhance & Master
-              </button>
-            </div>
-          </div>
+              </StudioButton>
+            </StaggerItem>
+          </StaggerGroup>
 
           {/* Processed Stems Output */}
           {stems.length > 0 && (
@@ -486,17 +504,17 @@ export function AILabPage() {
                         )}
                         {playingStemIdx === idx ? 'Stop' : 'Preview'}
                       </button>
-                      <button
-                        type="button"
+                      <StudioButton
+                        variant="audio"
+                        size="xs"
                         onClick={() => {
                           const wav = encodeAudioBufferToWav(st.buffer, 16);
                           triggerBlobDownload(wav, `${st.label.toLowerCase().replace(/[^a-z0-9]+/g, '_')}.wav`);
                         }}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded bg-[#22D3EE] text-xs font-semibold text-[#09090D]"
                       >
                         <Download className="w-3 h-3" />
                         Download WAV
-                      </button>
+                      </StudioButton>
                     </div>
                   </div>
                 ))}
@@ -523,14 +541,14 @@ export function AILabPage() {
                 onChange={(e) => void handleVideoUpload(e.target.files?.[0])}
                 className="hidden"
               />
-              <button
-                type="button"
+              <StudioButton
+                variant="primary"
+                size="sm"
                 onClick={() => videoInputRef.current?.click()}
-                className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] text-xs font-medium text-[#F8FAFC]"
               >
                 <Upload className="w-3.5 h-3.5" />
                 Select Local Video
-              </button>
+              </StudioButton>
             </div>
 
             {videoMeta && (
@@ -615,7 +633,7 @@ export function AILabPage() {
           </div>
 
           {/* Honest Subtitle Generation Disclosure + Local SRT Editor */}
-          <div className="bg-[#14141D] border border-[#292938] rounded-xl p-6 space-y-4">
+          <ScrollReveal className="bg-[#14141D] border border-[#292938] rounded-xl p-6 space-y-4">
             <div className="flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-[#F59E0B] shrink-0 mt-0.5" />
               <div className="space-y-1">
@@ -649,9 +667,10 @@ export function AILabPage() {
               <Download className="w-3.5 h-3.5 text-[#22D3EE]" />
               Export .SRT File
             </button>
-          </div>
+          </ScrollReveal>
         </div>
       )}
+      </TabContentTransition>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { Cpu, HardDrive, Lock, ShieldCheck, Terminal } from 'lucide-react';
+import { ScrollReveal, StaggerGroup, StaggerItem } from '../components/MotionPrimitives';
 import { useMixoraStore } from '../store/useMixoraStore';
 
 export function AboutPage() {
@@ -6,7 +7,7 @@ export function AboutPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-10">
-      <div className="border-b border-[#292938] pb-6 space-y-2">
+      <ScrollReveal distance={16} className="border-b border-[#292938] pb-6 space-y-2">
         <h1 className="font-display text-3xl font-bold tracking-tight text-[#F8FAFC]">
           About MIXORA
         </h1>
@@ -14,10 +15,10 @@ export function AboutPage() {
           MIXORA is a free, browser-first audio and video creative studio engineered around strict
           local processing, zero user accounts, and direct device downloads.
         </p>
-      </div>
+      </ScrollReveal>
 
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-5">
-        <div className="bg-[#14141D] border border-[#292938] rounded-xl p-6 space-y-3">
+      <StaggerGroup className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <StaggerItem className="bg-[#14141D] border border-[#292938] rounded-xl p-6 space-y-3">
           <Lock className="w-5 h-5 text-[#A3E635]" />
           <h2 className="font-display text-lg font-semibold text-[#F8FAFC]">
             Zero Cloud Media Storage
@@ -27,9 +28,9 @@ export function AboutPage() {
             Canvas2D pixel color grading, MP3/WAV encoding, and MediaRecorder video exports execute
             entirely in local device memory.
           </p>
-        </div>
+        </StaggerItem>
 
-        <div className="bg-[#14141D] border border-[#292938] rounded-xl p-6 space-y-3">
+        <StaggerItem className="bg-[#14141D] border border-[#292938] rounded-xl p-6 space-y-3">
           <ShieldCheck className="w-5 h-5 text-[#22D3EE]" />
           <h2 className="font-display text-lg font-semibold text-[#F8FAFC]">
             No Accounts or Paywalls
@@ -39,10 +40,10 @@ export function AboutPage() {
             Optional project saving uses your browser&apos;s IndexedDB and portable .mixora JSON
             files you own.
           </p>
-        </div>
-      </section>
+        </StaggerItem>
+      </StaggerGroup>
 
-      <section className="bg-[#14141D] border border-[#292938] rounded-xl p-6 space-y-4">
+      <ScrollReveal className="bg-[#14141D] border border-[#292938] rounded-xl p-6 space-y-4">
         <div className="flex items-center gap-2">
           <Cpu className="w-5 h-5 text-[#8B5CF6]" />
           <h2 className="font-display text-lg font-semibold text-[#F8FAFC]">
@@ -74,9 +75,9 @@ export function AboutPage() {
             )}
           </div>
         </div>
-      </section>
+      </ScrollReveal>
 
-      <section className="bg-[#14141D] border border-[#292938] rounded-xl p-6 space-y-4">
+      <ScrollReveal delay={0.06} className="bg-[#14141D] border border-[#292938] rounded-xl p-6 space-y-4">
         <div className="flex items-center gap-2">
           <Terminal className="w-5 h-5 text-[#22D3EE]" />
           <h2 className="font-display text-lg font-semibold text-[#F8FAFC]">
@@ -105,7 +106,7 @@ export function AboutPage() {
             Operators can access aggregate anonymous metrics via the dedicated /admin route.
           </p>
         </div>
-      </section>
+      </ScrollReveal>
     </div>
   );
 }

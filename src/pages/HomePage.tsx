@@ -16,6 +16,15 @@ import {
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 import { HeroWaveformPreview } from '../components/HeroWaveformPreview';
+import {
+  ParallaxFrame,
+  ScrollProgressBar,
+  ScrollReveal,
+  STUDIO_EASE,
+  StaggerGroup,
+  StaggerItem,
+} from '../components/MotionPrimitives';
+import { StudioButton } from '../components/StudioButton';
 import { useMixoraStore } from '../store/useMixoraStore';
 
 const AUDIO_CONSOLE_IMG = '/src/assets/images/studio_audio_console_1795531034658.jpg';
@@ -57,6 +66,7 @@ export function HomePage() {
 
   return (
     <div className="min-h-screen bg-[#09090D] text-[#F8FAFC]">
+      <ScrollProgressBar />
       {/* Strict 3-Zone Top Bar Contract */}
       <header className="sticky top-0 z-40 bg-[#09090D]/90 backdrop-blur-md border-b border-[#292938]">
         <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-8">
@@ -106,13 +116,14 @@ export function HomePage() {
             </button>
           </nav>
 
-          <button
-            type="button"
+          <StudioButton
+            variant="primary"
+            size="sm"
             onClick={() => navigate('dashboard')}
-            className="px-4 py-2 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] text-sm font-medium text-[#F8FAFC] transition-colors whitespace-nowrap shrink-0"
+            className="text-sm font-medium"
           >
             Start Creating
-          </button>
+          </StudioButton>
         </div>
       </header>
 
@@ -120,59 +131,87 @@ export function HomePage() {
       <section className="max-w-7xl mx-auto px-6 pt-16 pb-20 lg:pt-20 lg:pb-24">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
           <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+            initial="hidden"
+            animate="visible"
+            variants={{
+              hidden: {},
+              visible: { transition: { staggerChildren: 0.08 } },
+            }}
             className="lg:col-span-6 space-y-6"
           >
-            <p className="text-sm font-medium text-[#22D3EE] tracking-wide">
+            <motion.p
+              variants={{
+                hidden: { opacity: 0, y: 16 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.42, ease: STUDIO_EASE } },
+              }}
+              className="text-sm font-medium text-[#22D3EE] tracking-wide"
+            >
               Create. Mix. Edit. Enhance. Export.
-            </p>
-            <h1 className="font-display text-4xl sm:text-5xl lg:text-[3.5rem] font-bold tracking-tight leading-[1.08] text-[#F8FAFC]">
+            </motion.p>
+            <motion.h1
+              variants={{
+                hidden: { opacity: 0, y: 20 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.48, ease: STUDIO_EASE } },
+              }}
+              className="font-display text-4xl sm:text-5xl lg:text-[3.5rem] font-bold tracking-tight leading-[1.08] text-[#F8FAFC]"
+            >
               Your Creative Studio. Completely Free.
-            </h1>
-            <p className="text-base sm:text-lg text-[#94A3B8] leading-relaxed max-w-xl">
+            </motion.h1>
+            <motion.p
+              variants={{
+                hidden: { opacity: 0, y: 18 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.46, ease: STUDIO_EASE } },
+              }}
+              className="text-base sm:text-lg text-[#94A3B8] leading-relaxed max-w-xl"
+            >
               Create music mashups, edit videos, enhance audio and produce amazing content — all in
               one private browser-based studio.
-            </p>
+            </motion.p>
 
-            <div className="flex flex-wrap items-center gap-3 pt-2">
-              <motion.button
-                type="button"
-                whileHover={{ y: -1 }}
-                whileTap={{ scale: 0.98 }}
-                transition={{ duration: 0.14 }}
+            <motion.div
+              variants={{
+                hidden: { opacity: 0, y: 16 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.44, ease: STUDIO_EASE } },
+              }}
+              className="flex flex-wrap items-center gap-3 pt-2"
+            >
+              <StudioButton
+                variant="primary"
+                size="md"
                 onClick={() => navigate('dashboard')}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] text-sm font-semibold text-[#F8FAFC] transition-colors whitespace-nowrap"
               >
                 Start Creating
                 <ArrowRight className="w-4 h-4" />
-              </motion.button>
-              <motion.button
-                type="button"
-                whileHover={{ y: -1 }}
-                whileTap={{ scale: 0.98 }}
-                transition={{ duration: 0.14 }}
+              </StudioButton>
+              <StudioButton
+                variant="secondary"
+                size="md"
                 onClick={() => scrollToSection('creative-tools')}
-                className="px-6 py-3 rounded-md bg-[#14141D] hover:bg-[#1B1B27] border border-[#292938] text-sm font-medium text-[#F8FAFC] transition-colors whitespace-nowrap"
+                className="bg-[#14141D] font-medium"
               >
                 Explore Tools
-              </motion.button>
-            </div>
+              </StudioButton>
+            </motion.div>
 
-            <div className="pt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-[#94A3B8]">
+            <motion.div
+              variants={{
+                hidden: { opacity: 0, y: 12 },
+                visible: { opacity: 1, y: 0, transition: { duration: 0.44, ease: STUDIO_EASE } },
+              }}
+              className="pt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-[#94A3B8]"
+            >
               <span className="text-[#F8FAFC] font-medium">100% Free</span>
               <span aria-hidden="true" className="text-[#292938]">·</span>
               <span className="text-[#F8FAFC] font-medium">No Account Required</span>
               <span aria-hidden="true" className="text-[#292938]">·</span>
               <span className="text-[#F8FAFC] font-medium">Your Files Stay on Your Device</span>
-            </div>
+            </motion.div>
           </motion.div>
 
           <motion.div
-            initial={{ opacity: 0, y: 14 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.32, delay: 0.06, ease: [0.16, 1, 0.3, 1] }}
+            initial={{ opacity: 0, y: 24, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.56, delay: 0.14, ease: STUDIO_EASE }}
             className="lg:col-span-6"
           >
             <HeroWaveformPreview />
@@ -183,7 +222,7 @@ export function HomePage() {
       {/* 2. Creative Tools (Asymmetric Bento Grid) */}
       <section id="creative-tools" className="border-t border-[#292938] py-20">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="max-w-2xl mb-12">
+          <ScrollReveal className="max-w-2xl mb-12">
             <h2 className="font-display text-3xl font-bold tracking-tight text-[#F8FAFC]">
               Six integrated workspaces in one browser tab
             </h2>
@@ -191,97 +230,122 @@ export function HomePage() {
               Move cleanly between multitrack audio production, beat-matched mashups, live DJ
               mixing, video cutting, cinema color grading, and local conversion utilities.
             </p>
-          </div>
+          </ScrollReveal>
 
-          <div className="grid grid-cols-1 md:grid-cols-6 gap-5">
-            <button
-              type="button"
-              onClick={() => navigate('audio')}
-              className="md:col-span-3 text-left bg-[#14141D] hover:bg-[#1B1B27] border border-[#292938] rounded-xl p-6 transition-colors group"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <AudioWaveform className="w-6 h-6 text-[#22D3EE]" />
-                <ArrowRight className="w-4 h-4 text-[#94A3B8] group-hover:text-[#F8FAFC] transition-colors" />
-              </div>
-              <h3 className="font-display text-xl font-semibold text-[#F8FAFC]">Audio Studio</h3>
-              <p className="text-sm text-[#94A3B8] mt-2 leading-relaxed">
-                Multitrack timeline with trim, split, crossfade, reverse, pitch/speed controls, 3-band EQ,
-                reverb, delay, compressor, limiter, and lossless WAV or MP3 export.
-              </p>
-            </button>
+          <StaggerGroup className="grid grid-cols-1 md:grid-cols-6 gap-5">
+            <StaggerItem className="md:col-span-3">
+              <motion.button
+                type="button"
+                whileHover={{ y: -4 }}
+                whileTap={{ scale: 0.99 }}
+                transition={{ duration: 0.2, ease: STUDIO_EASE }}
+                onClick={() => navigate('audio')}
+                className="w-full h-full text-left bg-[#14141D] hover:bg-[#1B1B27] border border-[#292938] hover:border-[#22D3EE]/50 rounded-xl p-6 transition-colors group"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <AudioWaveform className="w-6 h-6 text-[#22D3EE]" />
+                  <ArrowRight className="w-4 h-4 text-[#94A3B8] group-hover:text-[#F8FAFC] group-hover:translate-x-1 transition-all" />
+                </div>
+                <h3 className="font-display text-xl font-semibold text-[#F8FAFC]">Audio Studio</h3>
+                <p className="text-sm text-[#94A3B8] mt-2 leading-relaxed">
+                  Multitrack timeline with trim, split, crossfade, reverse, pitch/speed controls, 3-band EQ,
+                  reverb, delay, compressor, limiter, and lossless WAV or MP3 export.
+                </p>
+              </motion.button>
+            </StaggerItem>
 
-            <button
-              type="button"
-              onClick={() => navigate('video')}
-              className="md:col-span-3 text-left bg-[#14141D] hover:bg-[#1B1B27] border border-[#292938] rounded-xl p-6 transition-colors group"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <Film className="w-6 h-6 text-[#8B5CF6]" />
-                <ArrowRight className="w-4 h-4 text-[#94A3B8] group-hover:text-[#F8FAFC] transition-colors" />
-              </div>
-              <h3 className="font-display text-xl font-semibold text-[#F8FAFC]">
-                Video Editing & Color Grading
-              </h3>
-              <p className="text-sm text-[#94A3B8] mt-2 leading-relaxed">
-                Multi-clip timeline, transitions, text titles, shapes, crop/rotate/speed controls, and
-                pixel-accurate Lift/Gamma/Gain color grading exported directly from Canvas.
-              </p>
-            </button>
+            <StaggerItem className="md:col-span-3">
+              <motion.button
+                type="button"
+                whileHover={{ y: -4 }}
+                whileTap={{ scale: 0.99 }}
+                transition={{ duration: 0.2, ease: STUDIO_EASE }}
+                onClick={() => navigate('video')}
+                className="w-full h-full text-left bg-[#14141D] hover:bg-[#1B1B27] border border-[#292938] hover:border-[#8B5CF6]/50 rounded-xl p-6 transition-colors group"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <Film className="w-6 h-6 text-[#8B5CF6]" />
+                  <ArrowRight className="w-4 h-4 text-[#94A3B8] group-hover:text-[#F8FAFC] group-hover:translate-x-1 transition-all" />
+                </div>
+                <h3 className="font-display text-xl font-semibold text-[#F8FAFC]">
+                  Video Editing & Color Grading
+                </h3>
+                <p className="text-sm text-[#94A3B8] mt-2 leading-relaxed">
+                  Multi-clip timeline, transitions, text titles, shapes, crop/rotate/speed controls, and
+                  pixel-accurate Lift/Gamma/Gain color grading exported directly from Canvas.
+                </p>
+              </motion.button>
+            </StaggerItem>
 
-            <button
-              type="button"
-              onClick={() => navigate('mashup')}
-              className="md:col-span-2 text-left bg-[#14141D] hover:bg-[#1B1B27] border border-[#292938] rounded-xl p-6 transition-colors group"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <Sliders className="w-5 h-5 text-[#3B82F6]" />
-                <ArrowRight className="w-4 h-4 text-[#94A3B8] group-hover:text-[#F8FAFC]" />
-              </div>
-              <h3 className="font-display text-lg font-semibold text-[#F8FAFC]">
-                Music Mashup Creator
-              </h3>
-              <p className="text-sm text-[#94A3B8] mt-2 leading-relaxed">
-                Real BPM detection, Camelot key compatibility analysis, beat alignment, and vocal/instrumental blending.
-              </p>
-            </button>
+            <StaggerItem className="md:col-span-2">
+              <motion.button
+                type="button"
+                whileHover={{ y: -4 }}
+                whileTap={{ scale: 0.99 }}
+                transition={{ duration: 0.2, ease: STUDIO_EASE }}
+                onClick={() => navigate('mashup')}
+                className="w-full h-full text-left bg-[#14141D] hover:bg-[#1B1B27] border border-[#292938] hover:border-[#3B82F6]/50 rounded-xl p-6 transition-colors group"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <Sliders className="w-5 h-5 text-[#3B82F6]" />
+                  <ArrowRight className="w-4 h-4 text-[#94A3B8] group-hover:text-[#F8FAFC] group-hover:translate-x-1 transition-all" />
+                </div>
+                <h3 className="font-display text-lg font-semibold text-[#F8FAFC]">
+                  Music Mashup Creator
+                </h3>
+                <p className="text-sm text-[#94A3B8] mt-2 leading-relaxed">
+                  Real BPM detection, Camelot key compatibility analysis, beat alignment, and vocal/instrumental blending.
+                </p>
+              </motion.button>
+            </StaggerItem>
 
-            <button
-              type="button"
-              onClick={() => navigate('dj')}
-              className="md:col-span-2 text-left bg-[#14141D] hover:bg-[#1B1B27] border border-[#292938] rounded-xl p-6 transition-colors group"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <Disc3 className="w-5 h-5 text-[#22D3EE]" />
-                <ArrowRight className="w-4 h-4 text-[#94A3B8] group-hover:text-[#F8FAFC]" />
-              </div>
-              <h3 className="font-display text-lg font-semibold text-[#F8FAFC]">Dual-Deck DJ Mixer</h3>
-              <p className="text-sm text-[#94A3B8] mt-2 leading-relaxed">
-                Independent Deck A and B playback with cue points, pitch faders, tempo sync, 3-band kill EQ, and smooth crossfader.
-              </p>
-            </button>
+            <StaggerItem className="md:col-span-2">
+              <motion.button
+                type="button"
+                whileHover={{ y: -4 }}
+                whileTap={{ scale: 0.99 }}
+                transition={{ duration: 0.2, ease: STUDIO_EASE }}
+                onClick={() => navigate('dj')}
+                className="w-full h-full text-left bg-[#14141D] hover:bg-[#1B1B27] border border-[#292938] hover:border-[#22D3EE]/50 rounded-xl p-6 transition-colors group"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <Disc3 className="w-5 h-5 text-[#22D3EE]" />
+                  <ArrowRight className="w-4 h-4 text-[#94A3B8] group-hover:text-[#F8FAFC] group-hover:translate-x-1 transition-all" />
+                </div>
+                <h3 className="font-display text-lg font-semibold text-[#F8FAFC]">Dual-Deck DJ Mixer</h3>
+                <p className="text-sm text-[#94A3B8] mt-2 leading-relaxed">
+                  Independent Deck A and B playback with cue points, pitch faders, tempo sync, 3-band kill EQ, and smooth crossfader.
+                </p>
+              </motion.button>
+            </StaggerItem>
 
-            <button
-              type="button"
-              onClick={() => navigate('ai')}
-              className="md:col-span-2 text-left bg-[#14141D] hover:bg-[#1B1B27] border border-[#292938] rounded-xl p-6 transition-colors group"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <Sparkles className="w-5 h-5 text-[#A3E635]" />
-                <ArrowRight className="w-4 h-4 text-[#94A3B8] group-hover:text-[#F8FAFC]" />
-              </div>
-              <h3 className="font-display text-lg font-semibold text-[#F8FAFC]">AI Lab & Utilities</h3>
-              <p className="text-sm text-[#94A3B8] mt-2 leading-relaxed">
-                Local DSP BPM/key detection, Mid/Side vocal splitting, 4-band stems, audio/video converters, and image resizers.
-              </p>
-            </button>
-          </div>
+            <StaggerItem className="md:col-span-2">
+              <motion.button
+                type="button"
+                whileHover={{ y: -4 }}
+                whileTap={{ scale: 0.99 }}
+                transition={{ duration: 0.2, ease: STUDIO_EASE }}
+                onClick={() => navigate('ai')}
+                className="w-full h-full text-left bg-[#14141D] hover:bg-[#1B1B27] border border-[#292938] hover:border-[#A3E635]/50 rounded-xl p-6 transition-colors group"
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <Sparkles className="w-5 h-5 text-[#A3E635]" />
+                  <ArrowRight className="w-4 h-4 text-[#94A3B8] group-hover:text-[#F8FAFC] group-hover:translate-x-1 transition-all" />
+                </div>
+                <h3 className="font-display text-lg font-semibold text-[#F8FAFC]">AI Lab & Utilities</h3>
+                <p className="text-sm text-[#94A3B8] mt-2 leading-relaxed">
+                  Local DSP BPM/key detection, Mid/Side vocal splitting, 4-band stems, audio/video converters, and image resizers.
+                </p>
+              </motion.button>
+            </StaggerItem>
+          </StaggerGroup>
         </div>
       </section>
 
       {/* 3. Audio Studio Spotlight */}
-      <section className="border-t border-[#292938] py-20">
+      <section className="border-t border-[#292938] py-20 overflow-x-clip">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 items-stretch">
-          <div className="lg:col-span-6 flex flex-col justify-center space-y-5">
+          <ScrollReveal direction="right" className="lg:col-span-6 flex flex-col justify-center space-y-5">
             <p className="text-xs font-medium text-[#22D3EE]">01. Audio Studio & DJ Mixing</p>
             <h2 className="font-display text-3xl font-bold tracking-tight text-[#F8FAFC]">
               Real-time Web Audio DSP without installing heavy DAW software
@@ -293,13 +357,14 @@ export function HomePage() {
               16-bit/24-bit WAV or 320 kbps MP3.
             </p>
             <div className="flex flex-wrap gap-3 pt-2">
-              <button
-                type="button"
+              <StudioButton
+                variant="secondary"
+                size="sm"
                 onClick={() => navigate('audio')}
-                className="px-4 py-2 rounded-md bg-[#1B1B27] hover:bg-[#292938] border border-[#292938] text-sm font-medium text-[#F8FAFC] transition-colors"
+                className="text-sm font-medium"
               >
                 Open Audio Studio
-              </button>
+              </StudioButton>
               <button
                 type="button"
                 onClick={() => navigate('dj')}
@@ -308,10 +373,10 @@ export function HomePage() {
                 Launch DJ Mixer
               </button>
             </div>
-          </div>
+          </ScrollReveal>
 
-          <div className="lg:col-span-6">
-            <div className="h-full min-h-[280px] rounded-xl overflow-hidden border border-[#292938] bg-[#14141D]">
+          <ScrollReveal direction="left" delay={0.08} className="lg:col-span-6">
+            <ParallaxFrame className="h-full min-h-[280px] rounded-xl border border-[#292938] bg-[#14141D]">
               {!imgErrors.audio ? (
                 <img
                   src={AUDIO_CONSOLE_IMG}
@@ -326,16 +391,16 @@ export function HomePage() {
                   <span className="text-sm font-medium">Multitrack Audio Console</span>
                 </div>
               )}
-            </div>
-          </div>
+            </ParallaxFrame>
+          </ScrollReveal>
         </div>
       </section>
 
       {/* 4. Video Studio & Color Correction Spotlight */}
-      <section className="border-t border-[#292938] py-20 bg-[#0D0D14]">
+      <section className="border-t border-[#292938] py-20 bg-[#0D0D14] overflow-x-clip">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 items-stretch">
-          <div className="lg:col-span-6 order-2 lg:order-1">
-            <div className="h-full min-h-[280px] rounded-xl overflow-hidden border border-[#292938] bg-[#14141D]">
+          <ScrollReveal direction="right" delay={0.08} className="lg:col-span-6 order-2 lg:order-1">
+            <ParallaxFrame className="h-full min-h-[280px] rounded-xl border border-[#292938] bg-[#14141D]">
               {!imgErrors.video ? (
                 <img
                   src={VIDEO_GRADING_IMG}
@@ -350,10 +415,10 @@ export function HomePage() {
                   <span className="text-sm font-medium">Cinema Color Grading Suite</span>
                 </div>
               )}
-            </div>
-          </div>
+            </ParallaxFrame>
+          </ScrollReveal>
 
-          <div className="lg:col-span-6 order-1 lg:order-2 flex flex-col justify-center space-y-5">
+          <ScrollReveal direction="left" className="lg:col-span-6 order-1 lg:order-2 flex flex-col justify-center space-y-5">
             <p className="text-xs font-medium text-[#8B5CF6]">02. Video Studio & Color Grading</p>
             <h2 className="font-display text-3xl font-bold tracking-tight text-[#F8FAFC]">
               Precision cuts, motion titles, and pixel-accurate color grading
@@ -365,22 +430,23 @@ export function HomePage() {
               Canvas pixel pipeline at export.
             </p>
             <div className="pt-2">
-              <button
-                type="button"
+              <StudioButton
+                variant="primary"
+                size="sm"
                 onClick={() => navigate('video')}
-                className="px-4 py-2 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] text-sm font-medium text-[#F8FAFC] transition-colors"
+                className="text-sm font-medium"
               >
                 Open Video Studio
-              </button>
+              </StudioButton>
             </div>
-          </div>
+          </ScrollReveal>
         </div>
       </section>
 
       {/* 5. AI Lab & DJ / Mashup Intelligence */}
-      <section className="border-t border-[#292938] py-20">
+      <section className="border-t border-[#292938] py-20 overflow-x-clip">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 items-stretch">
-          <div className="lg:col-span-6 flex flex-col justify-center space-y-5">
+          <ScrollReveal direction="right" className="lg:col-span-6 flex flex-col justify-center space-y-5">
             <p className="text-xs font-medium text-[#A3E635]">03. Local AI Lab & Mashup Engine</p>
             <h2 className="font-display text-3xl font-bold tracking-tight text-[#F8FAFC]">
               Honest client-side audio intelligence — no cloud queues or fake scores
@@ -392,13 +458,14 @@ export function HomePage() {
               get genuine mashup transition recommendations.
             </p>
             <div className="flex flex-wrap gap-3 pt-2">
-              <button
-                type="button"
+              <StudioButton
+                variant="secondary"
+                size="sm"
                 onClick={() => navigate('ai')}
-                className="px-4 py-2 rounded-md bg-[#1B1B27] hover:bg-[#292938] border border-[#292938] text-sm font-medium text-[#F8FAFC] transition-colors"
+                className="text-sm font-medium"
               >
                 Explore AI Lab
-              </button>
+              </StudioButton>
               <button
                 type="button"
                 onClick={() => navigate('mashup')}
@@ -407,10 +474,10 @@ export function HomePage() {
                 Try Smart Mashup Assistant
               </button>
             </div>
-          </div>
+          </ScrollReveal>
 
-          <div className="lg:col-span-6">
-            <div className="h-full min-h-[280px] rounded-xl overflow-hidden border border-[#292938] bg-[#14141D]">
+          <ScrollReveal direction="left" delay={0.08} className="lg:col-span-6">
+            <ParallaxFrame className="h-full min-h-[280px] rounded-xl border border-[#292938] bg-[#14141D]">
               {!imgErrors.dj ? (
                 <img
                   src={DJ_MIXER_IMG}
@@ -425,18 +492,20 @@ export function HomePage() {
                   <span className="text-sm font-medium">Dual-Deck DJ & Mashup Engine</span>
                 </div>
               )}
-            </div>
-          </div>
+            </ParallaxFrame>
+          </ScrollReveal>
         </div>
       </section>
 
       {/* 6. How It Works */}
       <section className="border-t border-[#292938] py-20 bg-[#0D0D14]">
         <div className="max-w-7xl mx-auto px-6">
-          <h2 className="font-display text-3xl font-bold tracking-tight text-[#F8FAFC] mb-10">
-            How MIXORA works
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
+          <ScrollReveal>
+            <h2 className="font-display text-3xl font-bold tracking-tight text-[#F8FAFC] mb-10">
+              How MIXORA works
+            </h2>
+          </ScrollReveal>
+          <StaggerGroup className="grid grid-cols-1 md:grid-cols-4 gap-8">
             {[
               {
                 step: '01. Load Media',
@@ -455,19 +524,19 @@ export function HomePage() {
                 body: 'Encode WAV, MP3, MP4/WebM, or PNG/WebP right inside your browser and download immediately.',
               },
             ].map((item) => (
-              <div key={item.step} className="space-y-2 border-t border-[#292938] pt-5">
+              <StaggerItem key={item.step} className="space-y-2 border-t border-[#292938] pt-5">
                 <h3 className="font-display text-base font-semibold text-[#F8FAFC]">{item.step}</h3>
                 <p className="text-sm text-[#94A3B8] leading-relaxed">{item.body}</p>
-              </div>
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerGroup>
         </div>
       </section>
 
       {/* 7. Privacy First & 8. Why MIXORA */}
       <section className="border-t border-[#292938] py-20">
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12">
-          <div className="bg-[#14141D] border border-[#292938] rounded-xl p-8 space-y-5">
+        <StaggerGroup className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12">
+          <StaggerItem className="bg-[#14141D] border border-[#292938] rounded-xl p-8 space-y-5">
             <Lock className="w-6 h-6 text-[#A3E635]" />
             <h2 className="font-display text-2xl font-bold text-[#F8FAFC]">
               Privacy-first by architecture, not policy promises
@@ -495,9 +564,9 @@ export function HomePage() {
                 <span>Portable .mixora JSON files</span>
               </div>
             </div>
-          </div>
+          </StaggerItem>
 
-          <div className="bg-[#14141D] border border-[#292938] rounded-xl p-8 space-y-5">
+          <StaggerItem className="bg-[#14141D] border border-[#292938] rounded-xl p-8 space-y-5">
             <Wrench className="w-6 h-6 text-[#8B5CF6]" />
             <h2 className="font-display text-2xl font-bold text-[#F8FAFC]">Why creators use MIXORA</h2>
             <p className="text-sm text-[#94A3B8] leading-relaxed">
@@ -515,64 +584,71 @@ export function HomePage() {
               </li>
             </ul>
             <div className="pt-2">
-              <button
-                type="button"
+              <StudioButton
+                variant="primary"
+                size="sm"
                 onClick={() => navigate('dashboard')}
-                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] text-sm font-medium text-[#F8FAFC] transition-colors"
+                className="px-5 py-2.5 text-sm font-medium"
               >
                 Open Creative Dashboard
                 <ArrowRight className="w-4 h-4" />
-              </button>
+              </StudioButton>
             </div>
-          </div>
-        </div>
+          </StaggerItem>
+        </StaggerGroup>
       </section>
 
       {/* 9. FAQ */}
       <section className="border-t border-[#292938] py-20 bg-[#0D0D14]">
         <div className="max-w-3xl mx-auto px-6">
-          <h2 className="font-display text-3xl font-bold tracking-tight text-[#F8FAFC] mb-8">
-            Frequently asked questions
-          </h2>
-          <div className="divide-y divide-[#292938] border-y border-[#292938]">
+          <ScrollReveal>
+            <h2 className="font-display text-3xl font-bold tracking-tight text-[#F8FAFC] mb-8">
+              Frequently asked questions
+            </h2>
+          </ScrollReveal>
+          <StaggerGroup className="divide-y divide-[#292938] border-y border-[#292938]" staggerDelay={0.05}>
             {FAQS.map((item, idx) => {
               const isOpen = openFaq === idx;
               return (
-                <div key={item.q} className="py-4">
+                <StaggerItem key={item.q} distance={14} className="py-4">
                   <button
                     type="button"
                     onClick={() => setOpenFaq(isOpen ? null : idx)}
-                    className="w-full flex items-center justify-between gap-4 text-left text-sm sm:text-base font-medium text-[#F8FAFC]"
+                    className="w-full flex items-center justify-between gap-4 text-left text-sm sm:text-base font-medium text-[#F8FAFC] hover:text-[#22D3EE] transition-colors"
                   >
                     <span>{item.q}</span>
                     <ChevronDown
-                      className={`w-4 h-4 text-[#94A3B8] shrink-0 transition-transform ${
-                        isOpen ? 'rotate-180' : ''
+                      className={`w-4 h-4 text-[#94A3B8] shrink-0 transition-transform duration-200 ${
+                        isOpen ? 'rotate-180 text-[#8B5CF6]' : ''
                       }`}
                     />
                   </button>
                   <AnimatePresence initial={false}>
                     {isOpen && (
                       <motion.div
-                        initial={{ opacity: 0, y: -4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -4 }}
-                        transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.24, ease: STUDIO_EASE }}
+                        className="overflow-hidden"
                       >
                         <p className="mt-3 text-sm text-[#94A3B8] leading-relaxed">{item.a}</p>
                       </motion.div>
                     )}
                   </AnimatePresence>
-                </div>
+                </StaggerItem>
               );
             })}
-          </div>
+          </StaggerGroup>
         </div>
       </section>
 
       {/* 10. Quiet Footer */}
       <footer className="border-t border-[#292938] py-12">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+        <ScrollReveal
+          distance={16}
+          className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6"
+        >
           <div>
             <p className="font-display text-lg font-bold tracking-tight text-[#F8FAFC]">MIXORA</p>
             <p className="text-xs text-[#94A3B8] mt-1">
@@ -580,26 +656,26 @@ export function HomePage() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-6 text-sm text-[#94A3B8]">
-            <button type="button" onClick={() => navigate('dashboard')} className="hover:text-[#F8FAFC]">
+            <button type="button" onClick={() => navigate('dashboard')} className="hover:text-[#F8FAFC] transition-colors">
               Dashboard
             </button>
-            <button type="button" onClick={() => navigate('audio')} className="hover:text-[#F8FAFC]">
+            <button type="button" onClick={() => navigate('audio')} className="hover:text-[#F8FAFC] transition-colors">
               Audio Studio
             </button>
-            <button type="button" onClick={() => navigate('video')} className="hover:text-[#F8FAFC]">
+            <button type="button" onClick={() => navigate('video')} className="hover:text-[#F8FAFC] transition-colors">
               Video Studio
             </button>
-            <button type="button" onClick={() => navigate('tools')} className="hover:text-[#F8FAFC]">
+            <button type="button" onClick={() => navigate('tools')} className="hover:text-[#F8FAFC] transition-colors">
               Media Tools
             </button>
-            <button type="button" onClick={() => navigate('projects')} className="hover:text-[#F8FAFC]">
+            <button type="button" onClick={() => navigate('projects')} className="hover:text-[#F8FAFC] transition-colors">
               My Projects
             </button>
-            <button type="button" onClick={() => navigate('about')} className="hover:text-[#F8FAFC]">
+            <button type="button" onClick={() => navigate('about')} className="hover:text-[#F8FAFC] transition-colors">
               About
             </button>
           </div>
-        </div>
+        </ScrollReveal>
       </footer>
     </div>
   );

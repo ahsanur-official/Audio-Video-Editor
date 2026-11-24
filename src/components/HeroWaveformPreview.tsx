@@ -1,6 +1,7 @@
 import { Pause, Play, Sliders, Volume2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { getAudioContext } from '../engines/audioEngine';
+import { StudioButton } from './StudioButton';
 
 /**
  * Interactive real-time audio/video waveform & timeline showcase for the Home Hero.
@@ -263,14 +264,14 @@ export function HeroWaveformPreview() {
     <div className="bg-[#14141D] border border-[#292938] rounded-xl overflow-hidden">
       <div className="px-4 py-3 border-b border-[#292938] flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <button
-            type="button"
+          <StudioButton
+            variant="primary"
+            size="xs"
             onClick={togglePlay}
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] text-xs font-medium text-[#F8FAFC] transition-colors whitespace-nowrap"
           >
             {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
             {isPlaying ? 'Stop Synth Preview' : 'Preview Live Audio'}
-          </button>
+          </StudioButton>
           <span className="text-xs text-[#94A3B8] font-mono tabular-nums">
             00:{String(Math.floor(playhead * 32)).padStart(2, '0')}.{String(Math.floor((playhead * 320) % 10))}
           </span>

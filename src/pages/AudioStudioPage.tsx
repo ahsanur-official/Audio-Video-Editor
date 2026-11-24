@@ -24,6 +24,8 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
+import { STUDIO_EASE, TabContentTransition } from '../components/MotionPrimitives';
+import { StudioButton } from '../components/StudioButton';
 import { WaveformViewer } from '../components/WaveformViewer';
 import { trackAnonymousEvent } from '../engines/analyticsClient';
 import {
@@ -588,14 +590,14 @@ export function AudioStudioPage() {
       <div className="bg-[#14141D] border-b border-[#292938] px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
         {/* Transport */}
         <div className="flex items-center gap-2">
-          <button
-            type="button"
+          <StudioButton
+            variant="primary"
+            size="sm"
             onClick={() => (isPlaying ? stopPlayback() : startPlayback(playhead))}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] text-xs font-semibold text-[#F8FAFC] transition-colors whitespace-nowrap"
           >
             {isPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
             {isPlaying ? 'Pause' : 'Play'}
-          </button>
+          </StudioButton>
           <button
             type="button"
             onClick={() => {
@@ -759,15 +761,16 @@ export function AudioStudioPage() {
               </button>
             ))}
           </div>
-          <button
-            type="button"
+          <StudioButton
+            variant="audio"
+            size="xs"
             onClick={() => setExportOpen(true)}
             disabled={tracks.every((t) => !t.buffer)}
-            className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-md bg-[#22D3EE] hover:bg-[#06B6D4] text-xs font-semibold text-[#09090D] disabled:opacity-40 whitespace-nowrap"
+            className="px-3.5"
           >
             <Download className="w-3.5 h-3.5" />
             Export Audio
-          </button>
+          </StudioButton>
         </div>
       </div>
 
@@ -885,13 +888,13 @@ export function AudioStudioPage() {
                 </p>
               </div>
               <div className="flex flex-wrap items-center justify-center gap-2 pt-2">
-                <button
-                  type="button"
+                <StudioButton
+                  variant="primary"
+                  size="sm"
                   onClick={() => fileInputRef.current?.click()}
-                  className="px-4 py-2 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] text-xs font-medium text-[#F8FAFC]"
                 >
                   Choose Local Audio Files
-                </button>
+                </StudioButton>
                 <button
                   type="button"
                   onClick={() => void loadDemoTrack('electronic_124')}
@@ -1093,23 +1096,34 @@ export function AudioStudioPage() {
         <aside className="w-full lg:w-80 xl:w-96 shrink-0 bg-[#14141D] border-t lg:border-t-0 lg:border-l border-[#292938] flex flex-col max-h-[45vh] lg:max-h-none">
           <div className="p-3 border-b border-[#292938] flex items-center justify-between">
             <div className="flex items-center gap-1 bg-[#09090D] p-1 rounded-md border border-[#292938]">
-              {(['effects', 'edit', 'mixer'] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setInspectorTab(t)}
-                  className={`px-3 py-1 rounded text-xs font-medium capitalize transition-colors ${
-                    inspectorTab === t ? 'bg-[#8B5CF6] text-[#F8FAFC]' : 'text-[#94A3B8] hover:text-[#F8FAFC]'
-                  }`}
-                >
-                  {t}
-                </button>
-              ))}
+              {(['effects', 'edit', 'mixer'] as const).map((t) => {
+                const active = inspectorTab === t;
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setInspectorTab(t)}
+                    className={`relative px-3 py-1 rounded text-xs font-medium capitalize transition-colors ${
+                      active ? 'text-[#F8FAFC]' : 'text-[#94A3B8] hover:text-[#F8FAFC]'
+                    }`}
+                  >
+                    {active && (
+                      <motion.span
+                        layoutId="audio-inspector-tab-bg"
+                        transition={{ duration: 0.2, ease: STUDIO_EASE }}
+                        className="absolute inset-0 rounded bg-[#8B5CF6]"
+                      />
+                    )}
+                    <span className="relative z-10">{t}</span>
+                  </button>
+                );
+              })}
             </div>
             <Sliders className="w-4 h-4 text-[#94A3B8]" />
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex-1 overflow-y-auto p-4">
+            <TabContentTransition tabKey={!selectedTrack ? 'empty' : inspectorTab} className="space-y-4">
             {!selectedTrack ? (
               <p className="text-xs text-[#94A3B8]">Select or import a track to inspect effects and trim settings.</p>
             ) : inspectorTab === 'edit' ? (
@@ -1315,6 +1329,7 @@ export function AudioStudioPage() {
                 </label>
               </div>
             )}
+            </TabContentTransition>
           </div>
         </aside>
       </div>
@@ -1449,15 +1464,15 @@ export function AudioStudioPage() {
                 >
                   Cancel
                 </button>
-                <button
-                  type="button"
+                <StudioButton
+                  variant="primary"
+                  size="sm"
                   disabled={exportProgress != null}
                   onClick={() => void handleExport()}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] text-xs font-semibold text-[#F8FAFC]"
                 >
                   {exportProgress != null && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                   Render & Download
-                </button>
+                </StudioButton>
               </div>
             </motion.div>
           </motion.div>

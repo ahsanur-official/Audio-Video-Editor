@@ -15,7 +15,15 @@ import {
   Upload,
   Wrench,
 } from 'lucide-react';
+import { motion } from 'motion/react';
 import { useRef } from 'react';
+import {
+  ScrollReveal,
+  STUDIO_EASE,
+  StaggerGroup,
+  StaggerItem,
+} from '../components/MotionPrimitives';
+import { StudioButton } from '../components/StudioButton';
 import {
   exportProjectFile,
   formatBytes,
@@ -86,82 +94,105 @@ export function DashboardPage() {
             onChange={handleImportProject}
             className="hidden"
           />
-          <button
-            type="button"
+          <StudioButton
+            variant="secondary"
+            size="sm"
             onClick={() => importRef.current?.click()}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-md bg-[#14141D] hover:bg-[#1B1B27] border border-[#292938] text-xs font-medium text-[#F8FAFC] transition-colors whitespace-nowrap"
+            className="bg-[#14141D] font-medium"
           >
             <Upload className="w-3.5 h-3.5 text-[#22D3EE]" />
             Import .mixora
-          </button>
-          <button
-            type="button"
+          </StudioButton>
+          <StudioButton
+            variant="primary"
+            size="sm"
             onClick={() => startNewProject('audio')}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] text-xs font-medium text-[#F8FAFC] transition-colors whitespace-nowrap"
           >
             <Plus className="w-3.5 h-3.5" />
             New Audio Project
-          </button>
+          </StudioButton>
         </div>
       </section>
 
       {/* Quick Start Actions */}
       <section className="space-y-4">
-        <h2 className="font-display text-base font-semibold text-[#F8FAFC]">Quick Start</h2>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <button
-            type="button"
-            onClick={() => startNewProject('audio')}
-            className="text-left bg-[#14141D] hover:bg-[#1B1B27] border border-[#292938] rounded-lg p-5 transition-colors"
-          >
-            <AudioWaveform className="w-5 h-5 text-[#22D3EE] mb-3" />
-            <h3 className="text-sm font-semibold text-[#F8FAFC]">Create Audio Project</h3>
-            <p className="text-xs text-[#94A3B8] mt-1 leading-relaxed">
-              Multitrack waveforms, effects rack, mixer, WAV & MP3 export.
-            </p>
-          </button>
+        <ScrollReveal distance={14}>
+          <h2 className="font-display text-base font-semibold text-[#F8FAFC]">Quick Start</h2>
+        </ScrollReveal>
+        <StaggerGroup className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <StaggerItem>
+            <motion.button
+              type="button"
+              whileHover={{ y: -3 }}
+              whileTap={{ scale: 0.985 }}
+              transition={{ duration: 0.18, ease: STUDIO_EASE }}
+              onClick={() => startNewProject('audio')}
+              className="w-full h-full text-left bg-[#14141D] hover:bg-[#1B1B27] border border-[#292938] hover:border-[#22D3EE]/50 rounded-lg p-5 transition-colors"
+            >
+              <AudioWaveform className="w-5 h-5 text-[#22D3EE] mb-3" />
+              <h3 className="text-sm font-semibold text-[#F8FAFC]">Create Audio Project</h3>
+              <p className="text-xs text-[#94A3B8] mt-1 leading-relaxed">
+                Multitrack waveforms, effects rack, mixer, WAV & MP3 export.
+              </p>
+            </motion.button>
+          </StaggerItem>
 
-          <button
-            type="button"
-            onClick={() => startNewProject('video')}
-            className="text-left bg-[#14141D] hover:bg-[#1B1B27] border border-[#292938] rounded-lg p-5 transition-colors"
-          >
-            <Film className="w-5 h-5 text-[#8B5CF6] mb-3" />
-            <h3 className="text-sm font-semibold text-[#F8FAFC]">Create Video Project</h3>
-            <p className="text-xs text-[#94A3B8] mt-1 leading-relaxed">
-              Timeline editing, text titles, transitions, and color grading.
-            </p>
-          </button>
+          <StaggerItem>
+            <motion.button
+              type="button"
+              whileHover={{ y: -3 }}
+              whileTap={{ scale: 0.985 }}
+              transition={{ duration: 0.18, ease: STUDIO_EASE }}
+              onClick={() => startNewProject('video')}
+              className="w-full h-full text-left bg-[#14141D] hover:bg-[#1B1B27] border border-[#292938] hover:border-[#8B5CF6]/50 rounded-lg p-5 transition-colors"
+            >
+              <Film className="w-5 h-5 text-[#8B5CF6] mb-3" />
+              <h3 className="text-sm font-semibold text-[#F8FAFC]">Create Video Project</h3>
+              <p className="text-xs text-[#94A3B8] mt-1 leading-relaxed">
+                Timeline editing, text titles, transitions, and color grading.
+              </p>
+            </motion.button>
+          </StaggerItem>
 
-          <button
-            type="button"
-            onClick={() => navigate('dj')}
-            className="text-left bg-[#14141D] hover:bg-[#1B1B27] border border-[#292938] rounded-lg p-5 transition-colors"
-          >
-            <Disc3 className="w-5 h-5 text-[#3B82F6] mb-3" />
-            <h3 className="text-sm font-semibold text-[#F8FAFC]">Open DJ Mixer</h3>
-            <p className="text-xs text-[#94A3B8] mt-1 leading-relaxed">
-              Dual-deck live mixing with BPM sync, pitch, loops, and EQ.
-            </p>
-          </button>
+          <StaggerItem>
+            <motion.button
+              type="button"
+              whileHover={{ y: -3 }}
+              whileTap={{ scale: 0.985 }}
+              transition={{ duration: 0.18, ease: STUDIO_EASE }}
+              onClick={() => navigate('dj')}
+              className="w-full h-full text-left bg-[#14141D] hover:bg-[#1B1B27] border border-[#292938] hover:border-[#3B82F6]/50 rounded-lg p-5 transition-colors"
+            >
+              <Disc3 className="w-5 h-5 text-[#3B82F6] mb-3" />
+              <h3 className="text-sm font-semibold text-[#F8FAFC]">Open DJ Mixer</h3>
+              <p className="text-xs text-[#94A3B8] mt-1 leading-relaxed">
+                Dual-deck live mixing with BPM sync, pitch, loops, and EQ.
+              </p>
+            </motion.button>
+          </StaggerItem>
 
-          <button
-            type="button"
-            onClick={() => navigate('ai')}
-            className="text-left bg-[#14141D] hover:bg-[#1B1B27] border border-[#292938] rounded-lg p-5 transition-colors"
-          >
-            <Sparkles className="w-5 h-5 text-[#A3E635] mb-3" />
-            <h3 className="text-sm font-semibold text-[#F8FAFC]">Open AI Lab</h3>
-            <p className="text-xs text-[#94A3B8] mt-1 leading-relaxed">
-              BPM & key analyzer, vocal split, 4-band stems, frame extractor.
-            </p>
-          </button>
-        </div>
+          <StaggerItem>
+            <motion.button
+              type="button"
+              whileHover={{ y: -3 }}
+              whileTap={{ scale: 0.985 }}
+              transition={{ duration: 0.18, ease: STUDIO_EASE }}
+              onClick={() => navigate('ai')}
+              className="w-full h-full text-left bg-[#14141D] hover:bg-[#1B1B27] border border-[#292938] hover:border-[#A3E635]/50 rounded-lg p-5 transition-colors"
+            >
+              <Sparkles className="w-5 h-5 text-[#A3E635] mb-3" />
+              <h3 className="text-sm font-semibold text-[#F8FAFC]">Open AI Lab</h3>
+              <p className="text-xs text-[#94A3B8] mt-1 leading-relaxed">
+                BPM & key analyzer, vocal split, 4-band stems, frame extractor.
+              </p>
+            </motion.button>
+          </StaggerItem>
+        </StaggerGroup>
       </section>
 
       {/* Audio Tools & Video Tools */}
-      <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-[#14141D] border border-[#292938] rounded-lg p-5 space-y-4">
+      <StaggerGroup className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <StaggerItem className="bg-[#14141D] border border-[#292938] rounded-lg p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-base font-semibold text-[#F8FAFC]">Audio Tools</h2>
             <span className="text-xs text-[#94A3B8]">Web Audio DSP</span>
@@ -211,9 +242,9 @@ export function DashboardPage() {
               );
             })}
           </div>
-        </div>
+        </StaggerItem>
 
-        <div className="bg-[#14141D] border border-[#292938] rounded-lg p-5 space-y-4">
+        <StaggerItem className="bg-[#14141D] border border-[#292938] rounded-lg p-5 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="font-display text-base font-semibold text-[#F8FAFC]">Video Tools</h2>
             <span className="text-xs text-[#94A3B8]">Canvas & Native Codecs</span>
@@ -263,11 +294,11 @@ export function DashboardPage() {
               );
             })}
           </div>
-        </div>
-      </section>
+        </StaggerItem>
+      </StaggerGroup>
 
       {/* Recently Opened Local Projects */}
-      <section className="space-y-4">
+      <ScrollReveal className="space-y-4">
         <div className="flex items-center justify-between">
           <h2 className="font-display text-base font-semibold text-[#F8FAFC]">
             Recent Local Projects
@@ -306,13 +337,13 @@ export function DashboardPage() {
                 </div>
 
                 <div className="flex items-center gap-2 shrink-0">
-                  <button
-                    type="button"
+                  <StudioButton
+                    variant="primary"
+                    size="xs"
                     onClick={() => loadProjectIntoWorkspace(proj)}
-                    className="px-3 py-1.5 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] text-xs font-medium text-[#F8FAFC] transition-colors"
                   >
                     Open
-                  </button>
+                  </StudioButton>
                   <button
                     type="button"
                     onClick={() => exportProjectFile(proj)}
@@ -334,11 +365,11 @@ export function DashboardPage() {
             ))}
           </div>
         )}
-      </section>
+      </ScrollReveal>
 
       {/* Capabilities, Storage & Privacy */}
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-5">
-        <div className="bg-[#14141D] border border-[#292938] rounded-lg p-5 space-y-3">
+      <StaggerGroup className="grid grid-cols-1 md:grid-cols-3 gap-5">
+        <StaggerItem className="bg-[#14141D] border border-[#292938] rounded-lg p-5 space-y-3">
           <div className="flex items-center gap-2 text-sm font-semibold text-[#F8FAFC]">
             <Cpu className="w-4 h-4 text-[#22D3EE]" />
             Browser Capabilities
@@ -369,9 +400,9 @@ export function DashboardPage() {
               </dd>
             </div>
           </dl>
-        </div>
+        </StaggerItem>
 
-        <div className="bg-[#14141D] border border-[#292938] rounded-lg p-5 space-y-3">
+        <StaggerItem className="bg-[#14141D] border border-[#292938] rounded-lg p-5 space-y-3">
           <div className="flex items-center gap-2 text-sm font-semibold text-[#F8FAFC]">
             <HardDrive className="w-4 h-4 text-[#8B5CF6]" />
             Device Memory & Storage
@@ -402,9 +433,9 @@ export function DashboardPage() {
               </dd>
             </div>
           </dl>
-        </div>
+        </StaggerItem>
 
-        <div className="bg-[#14141D] border border-[#292938] rounded-lg p-5 space-y-3">
+        <StaggerItem className="bg-[#14141D] border border-[#292938] rounded-lg p-5 space-y-3">
           <div className="flex items-center gap-2 text-sm font-semibold text-[#F8FAFC]">
             <Lock className="w-4 h-4 text-[#A3E635]" />
             Local-Only Privacy
@@ -413,8 +444,8 @@ export function DashboardPage() {
             No account required. Audio, video, and project data remain exclusively on this device.
             Clearing your workspace immediately revokes Blob URLs and releases memory buffers.
           </p>
-        </div>
-      </section>
+        </StaggerItem>
+      </StaggerGroup>
     </div>
   );
 }

@@ -15,6 +15,8 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
+import { ScrollProgressBar } from './MotionPrimitives';
+import { StudioButton } from './StudioButton';
 import { useMixoraStore } from '../store/useMixoraStore';
 import type { RouteId } from '../types/mixora';
 
@@ -55,6 +57,7 @@ export function StudioLayout({ children }: StudioLayoutProps) {
 
   return (
     <div className="min-h-screen bg-[#09090D] text-[#F8FAFC] flex flex-col lg:flex-row">
+      {!isEditingWorkspace && <ScrollProgressBar />}
       {/* Desktop Left Sidebar */}
       <aside className="hidden lg:flex lg:flex-col lg:w-56 xl:w-60 shrink-0 bg-[#14141D] border-r border-[#292938] sticky top-0 h-screen">
         <div className="h-14 px-5 flex items-center border-b border-[#292938]">
@@ -146,22 +149,24 @@ export function StudioLayout({ children }: StudioLayoutProps) {
 
           <div className="flex items-center gap-2 shrink-0">
             {isEditingWorkspace && (
-              <button
-                type="button"
+              <StudioButton
+                variant="secondary"
+                size="xs"
                 onClick={() => void saveCurrentProjectLocally()}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#1B1B27] hover:bg-[#292938] border border-[#292938] text-xs font-medium text-[#F8FAFC] transition-colors whitespace-nowrap shrink-0"
+                className="font-medium"
               >
                 <Save className="w-3.5 h-3.5 text-[#22D3EE]" />
                 Save Locally
-              </button>
+              </StudioButton>
             )}
-            <button
-              type="button"
+            <StudioButton
+              variant="primary"
+              size="xs"
               onClick={() => navigate('projects')}
-              className="px-3 py-1.5 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] text-xs font-medium text-[#F8FAFC] transition-colors whitespace-nowrap shrink-0"
+              className="font-medium"
             >
               My Projects
-            </button>
+            </StudioButton>
           </div>
         </header>
 

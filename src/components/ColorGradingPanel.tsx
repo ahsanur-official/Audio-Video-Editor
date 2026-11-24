@@ -1,9 +1,12 @@
 import { BookmarkPlus, RotateCcw, SplitSquareHorizontal, Trash2, Undo2 } from 'lucide-react';
+import { motion } from 'motion/react';
 import { useState } from 'react';
 import { trackAnonymousEvent } from '../engines/analyticsClient';
 import { COLOR_GRADING_PRESETS } from '../engines/videoEngine';
 import { useMixoraStore } from '../store/useMixoraStore';
 import type { ColorGradingSettings } from '../types/mixora';
+import { STUDIO_EASE, TabContentTransition } from './MotionPrimitives';
+import { StudioButton } from './StudioButton';
 
 interface ColorGradingPanelProps {
   compareSplit: boolean;
@@ -99,20 +102,28 @@ export function ColorGradingPanel({ compareSplit, onToggleCompareSplit }: ColorG
       {/* Header actions */}
       <div className="flex items-center justify-between gap-2 pb-3 border-b border-[#292938]">
         <div className="flex items-center gap-1 bg-[#09090D] p-1 rounded-md border border-[#292938]">
-          {(['presets', 'basic', 'advanced'] as const).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              className={`px-2.5 py-1 text-xs font-medium rounded capitalize transition-colors whitespace-nowrap ${
-                tab === t
-                  ? 'bg-[#8B5CF6] text-[#F8FAFC]'
-                  : 'text-[#94A3B8] hover:text-[#F8FAFC]'
-              }`}
-            >
-              {t}
-            </button>
-          ))}
+          {(['presets', 'basic', 'advanced'] as const).map((t) => {
+            const active = tab === t;
+            return (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTab(t)}
+                className={`relative px-2.5 py-1 text-xs font-medium rounded capitalize transition-colors whitespace-nowrap ${
+                  active ? 'text-[#F8FAFC]' : 'text-[#94A3B8] hover:text-[#F8FAFC]'
+                }`}
+              >
+                {active && (
+                  <motion.span
+                    layoutId="color-grading-tab-bg"
+                    transition={{ duration: 0.2, ease: STUDIO_EASE }}
+                    className="absolute inset-0 rounded bg-[#8B5CF6]"
+                  />
+                )}
+                <span className="relative z-10">{t}</span>
+              </button>
+            );
+          })}
         </div>
 
         <div className="flex items-center gap-1">
@@ -149,7 +160,8 @@ export function ColorGradingPanel({ compareSplit, onToggleCompareSplit }: ColorG
       </div>
 
       {/* Body */}
-      <div className="flex-1 overflow-y-auto pt-3 space-y-4 pr-1">
+      <div className="flex-1 overflow-y-auto pt-3 pr-1">
+        <TabContentTransition tabKey={tab} className="space-y-4">
         {tab === 'presets' && (
           <>
             <div className="grid grid-cols-2 gap-2">
@@ -183,13 +195,10 @@ export function ColorGradingPanel({ compareSplit, onToggleCompareSplit }: ColorG
                   maxLength={32}
                   className="flex-1 min-w-0 bg-[#09090D] border border-[#292938] rounded-md px-2.5 py-1.5 text-xs text-[#F8FAFC] placeholder:text-[#64748B]"
                 />
-                <button
-                  type="submit"
-                  className="px-3 py-1.5 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] text-[#F8FAFC] text-xs font-medium inline-flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-colors"
-                >
+                <StudioButton type="submit" variant="primary" size="xs">
                   <BookmarkPlus className="w-3.5 h-3.5" />
                   Save
-                </button>
+                </StudioButton>
               </form>
 
               {customPresets.length > 0 && (
@@ -226,6 +235,7 @@ export function ColorGradingPanel({ compareSplit, onToggleCompareSplit }: ColorG
         {tab === 'basic' && <div className="space-y-3">{BASIC_SLIDERS.map(renderSlider)}</div>}
 
         {tab === 'advanced' && <div className="space-y-3">{ADVANCED_SLIDERS.map(renderSlider)}</div>}
+        </TabContentTransition>
       </div>
 
       <p className="text-[11px] text-[#94A3B8] pt-3 mt-2 border-t border-[#292938] leading-relaxed">

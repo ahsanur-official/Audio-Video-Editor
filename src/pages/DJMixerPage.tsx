@@ -1,5 +1,7 @@
 import { Disc3, Pause, Play, RefreshCw, Repeat, Upload, Volume2 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+import { ScrollReveal, StaggerGroup, StaggerItem } from '../components/MotionPrimitives';
+import { StudioButton } from '../components/StudioButton';
 import { WaveformCanvas } from '../components/WaveformCanvas';
 import { analyzeAudioBuffer } from '../engines/audioAnalysis';
 import {
@@ -437,15 +439,14 @@ export function DJMixerPage() {
 
         {/* Transport & Loop Controls */}
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
+          <StudioButton
+            variant={which === 'A' ? 'audio' : 'primary'}
+            size="sm"
             onClick={() => toggleDeckPlay(which)}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-semibold text-[#09090D] transition-colors"
-            style={{ backgroundColor: accent }}
           >
             {deck.playing ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5" />}
             {deck.playing ? 'Pause' : 'Play'}
-          </button>
+          </StudioButton>
           <button
             type="button"
             onClick={() => handleCue(which)}
@@ -562,23 +563,24 @@ export function DJMixerPage() {
           </p>
         </div>
 
-        <button
-          type="button"
+        <StudioButton
+          variant="primary"
+          size="sm"
           onClick={() => void loadDemoDecks()}
-          className="px-4 py-2 rounded-md bg-[#8B5CF6] hover:bg-[#7C3AED] text-xs font-semibold text-[#F8FAFC] self-start sm:self-auto"
+          className="self-start sm:self-auto"
         >
           Load Demo DJ Tracks (A + B)
-        </button>
+        </StudioButton>
       </div>
 
       {/* Decks */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {renderDeck('A')}
-        {renderDeck('B')}
-      </div>
+      <StaggerGroup className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <StaggerItem>{renderDeck('A')}</StaggerItem>
+        <StaggerItem>{renderDeck('B')}</StaggerItem>
+      </StaggerGroup>
 
       {/* Master Crossfader & Transitions Console */}
-      <section className="bg-[#14141D] border border-[#292938] rounded-xl p-6 space-y-5">
+      <ScrollReveal className="bg-[#14141D] border border-[#292938] rounded-xl p-6 space-y-5">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
           {/* Master Volume & VU */}
           <div className="space-y-2.5">
@@ -656,7 +658,7 @@ export function DJMixerPage() {
             </button>
           </div>
         </div>
-      </section>
+      </ScrollReveal>
     </div>
   );
 }
