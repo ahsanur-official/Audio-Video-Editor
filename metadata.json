@@ -1,0 +1,6 @@
+{
+  "name": "MIXORA",
+  "description": "Free, privacy-first, browser-based all-in-one audio and video creative studio. Create music mashups, mix on dual DJ decks, edit multitrack audio, grade video color, and export directly from your device.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
