@@ -819,9 +819,9 @@ export function AudioStudioPage() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-3.5rem)] overflow-hidden">
+    <div className="flex flex-col min-h-[calc(100dvh-7.5rem)] lg:h-[calc(100vh-4rem)] lg:overflow-hidden">
       {/* Top Transport & Editing Bar */}
-      <div className="bg-[#14141D] border-b border-[#292938] px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-[#14141D] border-b border-[#292938] px-3 sm:px-4 py-2.5 flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
         {/* Transport */}
         <div className="flex items-center gap-2">
           <StudioButton
@@ -1021,10 +1021,10 @@ export function AudioStudioPage() {
       </div>
 
       {/* Main Workspace Split: Multitrack Timeline + Inspector */}
-      <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row lg:overflow-hidden">
         {/* Multitrack Timeline Area */}
         <div
-          className="flex-1 min-w-0 overflow-y-auto p-4 space-y-3"
+          className="flex-1 min-w-0 lg:overflow-y-auto p-3 sm:p-4 space-y-3"
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
             e.preventDefault();
@@ -1386,7 +1386,7 @@ export function AudioStudioPage() {
         </div>
 
         {/* Contextual Inspector Sidebar (Edit / Mixer / Effects Rack) */}
-        <aside className="w-full lg:w-80 xl:w-96 shrink-0 bg-[#14141D] border-t lg:border-t-0 lg:border-l border-[#292938] flex flex-col max-h-[45vh] lg:max-h-none">
+        <aside className="w-full lg:w-80 xl:w-96 shrink-0 bg-[#14141D] border-t lg:border-t-0 lg:border-l border-[#292938] flex flex-col lg:max-h-none">
           <div className="p-3 border-b border-[#292938] flex items-center justify-between">
             <div className="flex items-center gap-1 bg-[#09090D] p-1 rounded-md border border-[#292938]">
               {(['effects', 'edit', 'mixer'] as const).map((t) => {
@@ -1707,7 +1707,7 @@ export function AudioStudioPage() {
                 {exportFormat === 'wav' ? (
                   <div className="space-y-1.5">
                     <label className="text-xs text-[#94A3B8]">Bit Depth</label>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                       {([16, 24, 32] as const).map((d) => (
                         <button
                           key={d}
@@ -1727,7 +1727,7 @@ export function AudioStudioPage() {
                 ) : (
                   <div className="space-y-1.5">
                     <label className="text-xs text-[#94A3B8]">MP3 Quality Bitrate</label>
-                    <div className="grid grid-cols-3 gap-1.5">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
                       {([64, 96, 128, 192, 256, 320] as const).map((br) => (
                         <button
                           key={br}
@@ -1746,7 +1746,7 @@ export function AudioStudioPage() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <div className="space-y-1">
                     <label className="text-xs text-[#94A3B8]">Sample Rate</label>
                     <select

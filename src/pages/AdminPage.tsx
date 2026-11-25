@@ -391,13 +391,13 @@ export function AdminPage() {
 
   return (
     <div className="min-h-screen bg-[#09090D] text-[#F8FAFC]">
-      <header className="bg-[#14141D] border-b border-[#292938] px-4 sm:px-6 lg:px-8 h-[72px] flex items-center justify-between gap-4">
+      <header className="bg-[#14141D] border-b border-[#292938] px-4 sm:px-6 lg:px-8 py-3 sm:py-0 sm:h-[72px] flex flex-wrap items-center justify-between gap-3 sm:gap-4">
         <div className="flex items-center gap-3">
-          <MixoraLogo className="w-11 h-11" />
-          <span className="font-display text-lg font-bold tracking-tight studio-gradient-text">MIXORA Admin Analytics</span>
+          <MixoraLogo className="w-10 h-10 sm:w-11 sm:h-11" />
+          <span className="font-display text-base sm:text-lg font-bold tracking-tight studio-gradient-text">MIXORA Admin Analytics</span>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"
             onClick={() => void fetchAnalytics(token, days, featureFilter)}

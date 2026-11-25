@@ -810,9 +810,9 @@ export function VideoStudioPage() {
   }, [exportBitrateMbps, totalDuration, bgAudio]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-3.5rem)] overflow-hidden">
+    <div className="flex flex-col min-h-[calc(100dvh-7.5rem)] lg:h-[calc(100vh-4rem)] lg:overflow-hidden">
       {/* Top Toolbar */}
-      <div className="bg-[#14141D] border-b border-[#292938] px-4 py-2 flex flex-wrap items-center justify-between gap-3">
+      <div className="bg-[#14141D] border-b border-[#292938] px-3 sm:px-4 py-2 flex flex-wrap items-center justify-between gap-2.5 sm:gap-3">
         <div className="flex items-center gap-2">
           <StudioButton
             variant="primary"
@@ -954,9 +954,9 @@ export function VideoStudioPage() {
       </div>
 
       {/* Main Split: Preview + Timeline on Left, Inspector on Right */}
-      <div className="flex-1 min-h-0 flex flex-col lg:flex-row overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row lg:overflow-hidden">
         <div
-          className="flex-1 min-w-0 flex flex-col overflow-hidden"
+          className="flex-1 min-w-0 flex flex-col lg:overflow-hidden"
           onDragOver={(e) => e.preventDefault()}
           onDrop={(e) => {
             e.preventDefault();
@@ -966,7 +966,7 @@ export function VideoStudioPage() {
           {/* Preview Canvas Stage */}
           <div
             className={`${
-              fullscreenPreview ? 'fixed inset-0 z-50 bg-[#09090D] p-6' : 'flex-1 min-h-[220px] p-4'
+              fullscreenPreview ? 'fixed inset-0 z-50 bg-[#09090D] p-4 sm:p-6' : 'flex-1 min-h-[220px] p-3 sm:p-4'
             } flex flex-col items-center justify-center bg-[#0B0B10] relative`}
           >
             {fullscreenPreview && (
@@ -1177,7 +1177,7 @@ export function VideoStudioPage() {
         </div>
 
         {/* Right Contextual Inspector */}
-        <aside className="w-full lg:w-80 xl:w-96 shrink-0 bg-[#14141D] border-t lg:border-t-0 lg:border-l border-[#292938] flex flex-col max-h-[45vh] lg:max-h-none">
+        <aside className="w-full lg:w-80 xl:w-96 shrink-0 bg-[#14141D] border-t lg:border-t-0 lg:border-l border-[#292938] flex flex-col lg:max-h-none">
           <div className="p-2.5 border-b border-[#292938] grid grid-cols-4 gap-1 bg-[#0D0D14]">
             {[
               { id: 'color' as const, label: 'Color', icon: Palette },
@@ -1643,7 +1643,7 @@ export function VideoStudioPage() {
                   </select>
                 </div>
 
-                <div className="grid grid-cols-3 gap-2.5">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                   <div className="space-y-1">
                     <label className="text-[#94A3B8]">Resolution</label>
                     <select
@@ -1692,7 +1692,7 @@ export function VideoStudioPage() {
                 {/* Quality Preset Chips */}
                 <div className="space-y-1.5">
                   <label className="text-[#94A3B8]">Quality Preset</label>
-                  <div className="grid grid-cols-5 gap-1.5">
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5">
                     {[
                       { label: 'Light', mbps: 1.5 },
                       { label: 'Web', mbps: 4 },

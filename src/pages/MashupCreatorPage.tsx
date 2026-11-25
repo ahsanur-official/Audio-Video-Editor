@@ -1001,7 +1001,7 @@ export function MashupCreatorPage() {
             {exportFormat === 'wav' ? (
               <div className="space-y-1.5">
                 <label className="text-xs text-[#94A3B8]">WAV Bit Depth</label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   {([16, 24, 32] as const).map((d) => (
                     <button
                       key={d}
@@ -1021,7 +1021,7 @@ export function MashupCreatorPage() {
             ) : (
               <div className="space-y-1.5">
                 <label className="text-xs text-[#94A3B8]">MP3 Quality Bitrate</label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {([64, 96, 128, 192, 256, 320] as const).map((br) => (
                     <button
                       key={br}
@@ -1040,7 +1040,7 @@ export function MashupCreatorPage() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <label className="text-xs text-[#94A3B8]">Sample Rate</label>
                 <select

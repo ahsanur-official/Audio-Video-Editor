@@ -9,9 +9,11 @@ import {
   HardDrive,
   Layers,
   Lock,
+  Menu,
   Sliders,
   Sparkles,
   Wrench,
+  X,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
@@ -59,6 +61,7 @@ export function HomePage() {
   const navigate = useMixoraStore((s) => s.navigate);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [imgErrors, setImgErrors] = useState<Record<string, boolean>>({});
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   const scrollToSection = (id: string) => {
     const el = document.getElementById(id);
@@ -66,7 +69,7 @@ export function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#09090D] text-[#F8FAFC]">
+    <div className="min-h-screen bg-[#09090D] text-[#F8FAFC] overflow-x-clip">
       <ScrollProgressBar />
       {/* Polished Top Navigation Bar */}
       <header className="sticky top-0 z-40 bg-[#09090D]/85 backdrop-blur-md border-b border-[#292938]/90">
@@ -74,15 +77,15 @@ export function HomePage() {
           aria-hidden="true"
           className="h-[2px] w-full bg-gradient-to-r from-[#8B5CF6] via-[#3B82F6] to-[#22D3EE]"
         />
-        <div className="w-full max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 h-[76px] flex items-center justify-between gap-6">
+        <div className="w-full max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 h-16 sm:h-[76px] flex items-center justify-between gap-3 sm:gap-6">
           <button
             type="button"
             onClick={() => navigate('home')}
-            className="flex items-center gap-3 group whitespace-nowrap shrink-0"
+            className="flex items-center gap-2.5 sm:gap-3 group whitespace-nowrap shrink-0"
           >
-            <MixoraLogo className="w-12 h-12 sm:w-14 sm:h-14 transition-transform duration-200 group-hover:scale-105" />
+            <MixoraLogo className="w-11 h-11 sm:w-14 sm:h-14 transition-transform duration-200 group-hover:scale-105" />
             <div className="text-left">
-              <span className="block font-display text-xl sm:text-2xl font-bold tracking-tight studio-gradient-text leading-none">
+              <span className="block font-display text-lg sm:text-2xl font-bold tracking-tight studio-gradient-text leading-none">
                 MIXORA
               </span>
               <span className="hidden sm:block text-[10px] text-[#94A3B8] tracking-[0.16em] uppercase mt-1">
@@ -136,15 +139,64 @@ export function HomePage() {
             </button>
           </nav>
 
-          <StudioButton
-            variant="primary"
-            size="sm"
-            onClick={() => navigate('dashboard')}
-            className="text-sm font-medium bg-gradient-to-r from-[#8B5CF6] to-[#3B82F6] hover:from-[#7C3AED] hover:to-[#2563EB] border-0 shadow-[0_0_24px_rgba(139,92,246,0.28)]"
-          >
-            Start Creating
-          </StudioButton>
+          <div className="flex items-center gap-2 shrink-0">
+            <StudioButton
+              variant="primary"
+              size="sm"
+              onClick={() => navigate('dashboard')}
+              className="text-xs sm:text-sm font-medium bg-gradient-to-r from-[#8B5CF6] to-[#3B82F6] hover:from-[#7C3AED] hover:to-[#2563EB] border-0 shadow-[0_0_24px_rgba(139,92,246,0.28)]"
+            >
+              <span className="hidden sm:inline">Start Creating</span>
+              <span className="sm:hidden">Launch</span>
+            </StudioButton>
+            <button
+              type="button"
+              onClick={() => setMobileNavOpen((v) => !v)}
+              aria-label={mobileNavOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              className="md:hidden p-2 rounded-lg bg-[#14141D] border border-[#292938] text-[#94A3B8] hover:text-[#F8FAFC]"
+            >
+              {mobileNavOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
         </div>
+
+        {/* Mobile Dropdown Menu */}
+        <AnimatePresence initial={false}>
+          {mobileNavOpen && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2, ease: STUDIO_EASE }}
+              className="md:hidden overflow-hidden border-t border-[#292938] bg-[#12121B]/98"
+            >
+              <nav className="px-4 py-3 grid grid-cols-2 gap-2 text-xs font-medium">
+                {[
+                  { label: 'Dashboard', action: () => navigate('dashboard') },
+                  { label: 'Audio Studio', action: () => navigate('audio') },
+                  { label: 'Mashup Creator', action: () => navigate('mashup') },
+                  { label: 'Video Studio', action: () => navigate('video') },
+                  { label: 'DJ Mixer', action: () => navigate('dj') },
+                  { label: 'AI Lab', action: () => navigate('ai') },
+                  { label: 'Media Tools', action: () => navigate('tools') },
+                  { label: 'My Projects', action: () => navigate('projects') },
+                ].map((item) => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => {
+                      item.action();
+                      setMobileNavOpen(false);
+                    }}
+                    className="px-3 py-2.5 rounded-lg bg-[#1B1B27]/80 border border-[#292938] text-left text-[#F8FAFC] hover:border-[#8B5CF6]/60 transition-colors"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </nav>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </header>
 
       {/* 1. Hero Section */}

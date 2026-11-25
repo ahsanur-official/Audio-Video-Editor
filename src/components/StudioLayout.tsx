@@ -135,10 +135,10 @@ export function StudioLayout({ children }: StudioLayoutProps) {
           className="h-[2px] w-full bg-gradient-to-r from-[#8B5CF6] via-[#3B82F6] to-[#22D3EE]"
         />
 
-        {/* Brand Header + Collapse Toggle */}
+        {/* Brand Header */}
         <div
           className={`h-[74px] flex items-center border-b border-[#292938]/80 ${
-            sidebarCollapsed ? 'justify-center px-2' : 'justify-between px-3.5'
+            sidebarCollapsed ? 'justify-center px-2' : 'px-4'
           }`}
         >
           <button
@@ -173,18 +173,6 @@ export function StudioLayout({ children }: StudioLayoutProps) {
               )}
             </AnimatePresence>
           </button>
-
-          {!sidebarCollapsed && (
-            <button
-              type="button"
-              onClick={toggleSidebarCollapsed}
-              title="Collapse sidebar ([)"
-              aria-label="Collapse sidebar"
-              className="p-1.5 rounded-md text-[#94A3B8] hover:text-[#F8FAFC] hover:bg-[#1B1B27] transition-colors shrink-0"
-            >
-              <PanelLeftClose className="w-4 h-4" />
-            </button>
-          )}
         </div>
 
         {/* Navigation Links */}
@@ -260,23 +248,20 @@ export function StudioLayout({ children }: StudioLayoutProps) {
           })}
         </nav>
 
-        {/* Sidebar Footer: Privacy badge + Expand button when collapsed */}
-        <div className="p-2.5 border-t border-[#292938]/80 space-y-2">
+        {/* Sidebar Footer: Privacy badge */}
+        <div className="p-2.5 border-t border-[#292938]/80">
           {sidebarCollapsed ? (
-            <button
-              type="button"
-              onClick={toggleSidebarCollapsed}
-              title="Expand sidebar ([)"
-              aria-label="Expand sidebar"
-              className="w-full flex items-center justify-center p-2 rounded-lg text-[#94A3B8] hover:text-[#F8FAFC] hover:bg-[#1B1B27] transition-colors"
+            <div
+              title="100% Local & Free — Zero cloud uploads"
+              className="w-full flex items-center justify-center p-2 rounded-lg text-[#22D3EE]"
             >
-              <PanelLeftOpen className="w-4 h-4" />
-            </button>
+              <ShieldCheck className="w-4 h-4" />
+            </div>
           ) : (
             <div className="rounded-lg bg-[#0D0D14] border border-[#292938]/80 p-3 space-y-1.5">
               <div className="flex items-center gap-2 text-xs font-semibold text-[#F8FAFC]">
                 <ShieldCheck className="w-3.5 h-3.5 text-[#22D3EE] shrink-0" />
-                <span>100% Local & Free</span>
+                <span>100% Local &amp; Free</span>
               </div>
               <p className="text-[11px] text-[#94A3B8] leading-relaxed">
                 Zero cloud uploads. Press <kbd className="px-1 py-0.5 rounded bg-[#1B1B27] text-[#F8FAFC] font-mono text-[10px]">[</kbd> to toggle rail.
@@ -287,9 +272,9 @@ export function StudioLayout({ children }: StudioLayoutProps) {
       </motion.aside>
 
       {/* Main Column */}
-      <div className="flex-1 min-w-0 flex flex-col min-h-screen pb-16 lg:pb-0">
+      <div className="flex-1 min-w-0 flex flex-col min-h-screen pb-[calc(3.75rem+env(safe-area-inset-bottom))] lg:pb-0">
         {/* Polished Workspace Top Bar */}
-        <header className="h-16 bg-[#12121B]/90 backdrop-blur-md border-b border-[#292938]/90 px-4 lg:px-6 flex items-center justify-between gap-3 sticky top-0 z-20">
+        <header className="h-16 bg-[#12121B]/90 backdrop-blur-md border-b border-[#292938]/90 px-3 sm:px-4 lg:px-6 flex items-center justify-between gap-2 sm:gap-3 sticky top-0 z-20">
           <div className="flex items-center gap-2.5 min-w-0">
             <button
               type="button"
@@ -353,7 +338,19 @@ export function StudioLayout({ children }: StudioLayoutProps) {
             )}
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => {
+                setCommandOpen(true);
+                setCommandQuery('');
+              }}
+              aria-label="Quick Jump"
+              className="md:hidden inline-flex items-center justify-center p-2 rounded-lg bg-[#09090D]/80 border border-[#292938] hover:border-[#8B5CF6]/60 text-[#94A3B8] hover:text-[#F8FAFC] transition-colors shrink-0"
+            >
+              <Search className="w-4 h-4 text-[#8B5CF6]" />
+            </button>
+
             <button
               type="button"
               onClick={() => {
@@ -377,7 +374,8 @@ export function StudioLayout({ children }: StudioLayoutProps) {
                 className="font-medium"
               >
                 <Save className="w-3.5 h-3.5 text-[#22D3EE]" />
-                Save Locally
+                <span className="hidden sm:inline">Save Locally</span>
+                <span className="sm:hidden">Save</span>
               </StudioButton>
             )}
             <StudioButton
@@ -386,7 +384,8 @@ export function StudioLayout({ children }: StudioLayoutProps) {
               onClick={() => navigate('projects')}
               className="font-medium bg-gradient-to-r from-[#8B5CF6] to-[#3B82F6] hover:from-[#7C3AED] hover:to-[#2563EB] border-0"
             >
-              My Projects
+              <span className="hidden sm:inline">My Projects</span>
+              <span className="sm:hidden">Projects</span>
             </StudioButton>
           </div>
         </header>
@@ -537,7 +536,7 @@ export function StudioLayout({ children }: StudioLayoutProps) {
       {/* Mobile Compact Bottom Tab Bar */}
       <nav
         aria-label="Mobile quick navigation"
-        className="lg:hidden fixed bottom-0 inset-x-0 h-14 bg-[#12121B]/95 backdrop-blur-md border-t border-[#292938] z-30 grid grid-cols-5"
+        className="lg:hidden fixed bottom-0 inset-x-0 min-h-14 pb-[env(safe-area-inset-bottom)] bg-[#12121B]/95 backdrop-blur-md border-t border-[#292938] z-30 grid grid-cols-5"
       >
         {MOBILE_BAR_NAV.map((item) => {
           const Icon = item.icon;
@@ -547,7 +546,7 @@ export function StudioLayout({ children }: StudioLayoutProps) {
               key={item.id}
               type="button"
               onClick={() => navigate(item.id)}
-              className={`relative flex flex-col items-center justify-center gap-0.5 text-[11px] font-medium transition-colors ${
+              className={`relative flex flex-col items-center justify-center gap-0.5 py-2 text-[11px] font-medium transition-colors ${
                 active ? 'text-[#F8FAFC]' : 'text-[#94A3B8]'
               }`}
             >

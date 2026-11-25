@@ -229,7 +229,7 @@ export function ModalTransition({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
           onClick={handleBackdrop}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-[2px] p-4"
+          className="fixed inset-0 z-50 flex items-start sm:items-center justify-center overflow-y-auto bg-black/75 backdrop-blur-[2px] px-3 py-6 sm:p-4"
         >
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 12 }}
@@ -237,7 +237,7 @@ export function ModalTransition({
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ duration: 0.22, ease: STUDIO_EASE }}
             onClick={(e) => e.stopPropagation()}
-            className={`w-full ${maxWidthClass}`}
+            className={`w-full my-auto ${maxWidthClass}`}
           >
             {children}
           </motion.div>
