@@ -10,6 +10,7 @@ import {
   FolderSync,
   Loader2,
   Maximize2,
+  Monitor,
   Palette,
   Pause,
   Play,
@@ -21,10 +22,11 @@ import {
   Trash2,
   Type,
   Upload,
+  Video,
   X,
 } from 'lucide-react';
 import { motion } from 'motion/react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ColorGradingPanel } from '../components/ColorGradingPanel';
 import { ModalTransition, STUDIO_EASE, TabContentTransition } from '../components/MotionPrimitives';
 import { StudioButton } from '../components/StudioButton';
@@ -34,7 +36,7 @@ import {
   encodeAudioBufferToWav,
   getAudioContext,
 } from '../engines/audioEngine';
-import { triggerBlobDownload } from '../engines/storageEngine';
+import { formatBytes, triggerBlobDownload } from '../engines/storageEngine';
 import {
   applyColorGradingToCanvas,
   drawOverlaysAtTime,
@@ -43,7 +45,13 @@ import {
   probeVideoFile,
 } from '../engines/videoEngine';
 import { useMixoraStore } from '../store/useMixoraStore';
-import type { TransitionType, VideoClipModel, VideoOverlayModel } from '../types/mixora';
+import type {
+  TransitionType,
+  VideoAspectRatioOption,
+  VideoClipModel,
+  VideoOverlayModel,
+  VideoResolutionOption,
+} from '../types/mixora';
 
 function fmtTime(sec: number): string {
   const s = Math.max(0, sec);
@@ -88,10 +96,18 @@ export function VideoStudioPage() {
   // Export modal state
   const [exportOpen, setExportOpen] = useState(false);
   const [exportMime, setExportMime] = useState('');
-  const [exportRes, setExportRes] = useState<'480p' | '720p' | '1080p' | 'source'>('720p');
+  const [exportRes, setExportRes] = useState<VideoResolutionOption>('1080p');
+  const [exportAspect, setExportAspect] = useState<VideoAspectRatioOption>('original');
   const [exportFps, setExportFps] = useState(30);
-  const [exportBitrateMbps, setExportBitrateMbps] = useState(5);
+  const [exportBitrateMbps, setExportBitrateMbps] = useState(8);
   const [exportProgress, setExportProgress] = useState<number | null>(null);
+
+  // Local Screen / Webcam capture state
+  const [captureMode, setCaptureMode] = useState<'screen' | 'webcam' | null>(null);
+  const [captureSec, setCaptureSec] = useState(0);
+  const captureRecRef = useRef<MediaRecorder | null>(null);
+  const captureChunksRef = useRef<BlobPart[]>([]);
+  const captureTimerRef = useRef<number | null>(null);
 
   const previewCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const hiddenVideosRef = useRef<Map<string, HTMLVideoElement>>(new Map());
@@ -242,7 +258,86 @@ export function VideoStudioPage() {
     setIsPlaying(false);
   };
 
-  useEffect(() => () => pauseAllVideos(), []);
+  useEffect(() => {
+    return () => {
+      pauseAllVideos();
+      if (captureTimerRef.current) window.clearInterval(captureTimerRef.current);
+      if (captureRecRef.current && captureRecRef.current.state !== 'inactive') {
+        captureRecRef.current.stop();
+      }
+    };
+  }, []);
+
+  const toggleLiveCapture = async (mode: 'screen' | 'webcam') => {
+    if (captureMode) {
+      captureRecRef.current?.stop();
+      setCaptureMode(null);
+      if (captureTimerRef.current) {
+        window.clearInterval(captureTimerRef.current);
+        captureTimerRef.current = null;
+      }
+      return;
+    }
+
+    try {
+      const stream =
+        mode === 'screen'
+          ? await navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
+          : await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+
+      const mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')
+        ? 'video/webm;codecs=vp9,opus'
+        : MediaRecorder.isTypeSupported('video/webm')
+          ? 'video/webm'
+          : '';
+      const recorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+      captureChunksRef.current = [];
+
+      recorder.ondataavailable = (ev) => {
+        if (ev.data.size > 0) captureChunksRef.current.push(ev.data);
+      };
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((tr) => tr.stop());
+        if (captureTimerRef.current) {
+          window.clearInterval(captureTimerRef.current);
+          captureTimerRef.current = null;
+        }
+        setCaptureMode(null);
+        const blob = new Blob(captureChunksRef.current, { type: recorder.mimeType || 'video/webm' });
+        if (blob.size === 0) return;
+        const file = new File([blob], `${mode}-capture-${Date.now()}.webm`, {
+          type: recorder.mimeType || 'video/webm',
+        });
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        await handleVideoFiles(dt.files);
+        pushToast({
+          type: 'success',
+          title: `Added ${mode === 'screen' ? 'screen recording' : 'webcam clip'} to timeline`,
+        });
+      };
+
+      // Also stop cleanly if user stops browser screen share UI
+      const videoTrack = stream.getVideoTracks()[0];
+      if (videoTrack) {
+        videoTrack.onended = () => {
+          if (recorder.state !== 'inactive') recorder.stop();
+        };
+      }
+
+      captureRecRef.current = recorder;
+      recorder.start(250);
+      setCaptureSec(0);
+      setCaptureMode(mode);
+      captureTimerRef.current = window.setInterval(() => setCaptureSec((s) => s + 1), 1000);
+    } catch (err) {
+      pushToast({
+        type: 'error',
+        title: `${mode === 'screen' ? 'Screen' : 'Webcam'} capture cancelled or blocked`,
+        detail: err instanceof Error ? err.message : 'Allow capture permission in your browser.',
+      });
+    }
+  };
 
   // Playback loop
   useEffect(() => {
@@ -554,22 +649,38 @@ export function VideoStudioPage() {
 
     try {
       const firstClip = videoClips[0];
-      const outW =
-        exportRes === '480p'
-          ? 854
-          : exportRes === '720p'
-            ? 1280
-            : exportRes === '1080p'
-              ? 1920
-              : Math.min(1920, firstClip.width || 1280);
-      const outH =
-        exportRes === '480p'
-          ? 480
-          : exportRes === '720p'
-            ? 720
-            : exportRes === '1080p'
-              ? 1080
-              : Math.min(1080, firstClip.height || 720);
+      const baseHeight =
+        exportRes === '360p'
+          ? 360
+          : exportRes === '480p'
+            ? 480
+            : exportRes === '720p'
+              ? 720
+              : exportRes === '1080p'
+                ? 1080
+                : exportRes === '1440p'
+                  ? 1440
+                  : exportRes === '2160p'
+                    ? 2160
+                    : Math.min(2160, firstClip.height || 720);
+
+      let outW = Math.round((baseHeight * 16) / 9);
+      let outH = baseHeight;
+      if (exportAspect === 'original' && exportRes === 'source') {
+        outW = Math.min(3840, firstClip.width || 1280);
+        outH = Math.min(2160, firstClip.height || 720);
+      } else if (exportAspect === 'original' && firstClip.width && firstClip.height) {
+        outW = Math.round((baseHeight * firstClip.width) / firstClip.height);
+      } else if (exportAspect === '9:16') {
+        outW = Math.round((baseHeight * 9) / 16);
+      } else if (exportAspect === '1:1') {
+        outW = baseHeight;
+      } else if (exportAspect === '4:5') {
+        outW = Math.round((baseHeight * 4) / 5);
+      }
+      // Ensure even pixel dimensions for H.264/VP9 encoders
+      outW = Math.max(320, Math.round(outW / 2) * 2);
+      outH = Math.max(240, Math.round(outH / 2) * 2);
 
       const exportCanvas = document.createElement('canvas');
       exportCanvas.width = outW;
@@ -693,6 +804,11 @@ export function VideoStudioPage() {
     }
   };
 
+  const estimatedVideoBytes = useMemo(() => {
+    const bitsPerSec = exportBitrateMbps * 1_000_000 + (bgAudio ? 160_000 : 0);
+    return Math.round((Math.max(1, totalDuration) * bitsPerSec) / 8);
+  }, [exportBitrateMbps, totalDuration, bgAudio]);
+
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)] overflow-hidden">
       {/* Top Toolbar */}
@@ -743,10 +859,36 @@ export function VideoStudioPage() {
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#1B1B27] hover:bg-[#292938] border border-[#292938] text-xs font-medium text-[#F8FAFC]"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#1B1B27] hover:bg-[#292938] border border-[#292938] text-xs font-medium text-[#F8FAFC] whitespace-nowrap"
           >
             <Upload className="w-3.5 h-3.5 text-[#8B5CF6]" />
             Import Video
+          </button>
+          <button
+            type="button"
+            onClick={() => void toggleLiveCapture('screen')}
+            disabled={captureMode === 'webcam'}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs font-medium whitespace-nowrap transition-colors ${
+              captureMode === 'screen'
+                ? 'bg-[#F43F5E]/20 border-[#F43F5E] text-[#F43F5E] animate-pulse'
+                : 'bg-[#1B1B27] hover:bg-[#292938] border-[#292938] text-[#F8FAFC] disabled:opacity-40'
+            }`}
+          >
+            <Monitor className="w-3.5 h-3.5 text-[#22D3EE]" />
+            {captureMode === 'screen' ? `Stop (${captureSec}s)` : 'Screen Rec'}
+          </button>
+          <button
+            type="button"
+            onClick={() => void toggleLiveCapture('webcam')}
+            disabled={captureMode === 'screen'}
+            className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border text-xs font-medium whitespace-nowrap transition-colors ${
+              captureMode === 'webcam'
+                ? 'bg-[#F43F5E]/20 border-[#F43F5E] text-[#F43F5E] animate-pulse'
+                : 'bg-[#1B1B27] hover:bg-[#292938] border-[#292938] text-[#F8FAFC] disabled:opacity-40'
+            }`}
+          >
+            <Video className="w-3.5 h-3.5 text-[#F43F5E]" />
+            {captureMode === 'webcam' ? `Stop (${captureSec}s)` : 'Webcam'}
           </button>
           <button
             type="button"
@@ -1461,13 +1603,23 @@ export function VideoStudioPage() {
       </div>
 
       {/* Video Export Modal */}
-      <ModalTransition open={exportOpen} onBackdropClick={() => exportProgress == null && setExportOpen(false)}>
-        <div className="bg-[#14141D] border border-[#292938] rounded-xl w-full p-6 space-y-4">
-            <h3 className="font-display text-lg font-semibold text-[#F8FAFC]">Export Graded Video</h3>
-            <p className="text-xs text-[#94A3B8]">
-              Only codecs genuinely supported by your browser&apos;s MediaRecorder are shown below.
-              All color grading, crops, and titles are baked into the exported frames.
-            </p>
+      <ModalTransition
+        open={exportOpen}
+        maxWidthClass="max-w-lg"
+        onBackdropClick={() => exportProgress == null && setExportOpen(false)}
+      >
+        <div className="bg-[#14141D] border border-[#292938] rounded-xl w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex items-start justify-between gap-2">
+              <div>
+                <h3 className="font-display text-lg font-semibold text-[#F8FAFC]">Export Graded Video</h3>
+                <p className="text-xs text-[#94A3B8] mt-0.5">
+                  Color grading, gradient LUTs, vignette, cinema bars & titles bake into exported frames.
+                </p>
+              </div>
+              <span className="text-xs font-mono text-[#22D3EE] shrink-0">
+                ~{formatBytes(estimatedVideoBytes)}
+              </span>
+            </div>
 
             {capabilities?.supportedVideoExports.length === 0 ? (
               <p className="text-xs text-[#F43F5E]">
@@ -1475,9 +1627,9 @@ export function VideoStudioPage() {
                 or Firefox desktop.
               </p>
             ) : (
-              <div className="space-y-3 text-xs">
+              <div className="space-y-3.5 text-xs">
                 <div className="space-y-1">
-                  <label className="text-[#94A3B8]">Browser-Supported Format</label>
+                  <label className="text-[#94A3B8]">Browser-Supported Codec / Format</label>
                   <select
                     value={exportMime}
                     onChange={(e) => setExportMime(e.target.value)}
@@ -1491,18 +1643,35 @@ export function VideoStudioPage() {
                   </select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-3 gap-2.5">
                   <div className="space-y-1">
                     <label className="text-[#94A3B8]">Resolution</label>
                     <select
                       value={exportRes}
-                      onChange={(e) => setExportRes(e.target.value as '480p' | '720p' | '1080p' | 'source')}
-                      className="w-full bg-[#09090D] border border-[#292938] rounded-md px-3 py-2 text-[#F8FAFC]"
+                      onChange={(e) => setExportRes(e.target.value as VideoResolutionOption)}
+                      className="w-full bg-[#09090D] border border-[#292938] rounded-md px-2.5 py-2 text-[#F8FAFC]"
                     >
-                      <option value="480p">480p (Fast)</option>
+                      <option value="360p">360p (Mobile)</option>
+                      <option value="480p">480p (SD)</option>
                       <option value="720p">720p HD</option>
                       <option value="1080p">1080p Full HD</option>
+                      <option value="1440p">1440p (2K QHD)</option>
+                      <option value="2160p">2160p (4K UHD)</option>
                       <option value="source">Match Source</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[#94A3B8]">Aspect Ratio</label>
+                    <select
+                      value={exportAspect}
+                      onChange={(e) => setExportAspect(e.target.value as VideoAspectRatioOption)}
+                      className="w-full bg-[#09090D] border border-[#292938] rounded-md px-2.5 py-2 text-[#F8FAFC]"
+                    >
+                      <option value="original">Original</option>
+                      <option value="16:9">16:9 Landscape</option>
+                      <option value="9:16">9:16 Reels / Shorts</option>
+                      <option value="1:1">1:1 Square</option>
+                      <option value="4:5">4:5 Portrait</option>
                     </select>
                   </div>
                   <div className="space-y-1">
@@ -1510,25 +1679,54 @@ export function VideoStudioPage() {
                     <select
                       value={exportFps}
                       onChange={(e) => setExportFps(Number(e.target.value))}
-                      className="w-full bg-[#09090D] border border-[#292938] rounded-md px-3 py-2 text-[#F8FAFC]"
+                      className="w-full bg-[#09090D] border border-[#292938] rounded-md px-2.5 py-2 text-[#F8FAFC]"
                     >
                       <option value={24}>24 fps (Cinema)</option>
+                      <option value={25}>25 fps (PAL)</option>
                       <option value={30}>30 fps (Standard)</option>
                       <option value={60}>60 fps (Smooth)</option>
                     </select>
                   </div>
                 </div>
 
+                {/* Quality Preset Chips */}
+                <div className="space-y-1.5">
+                  <label className="text-[#94A3B8]">Quality Preset</label>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {[
+                      { label: 'Light', mbps: 1.5 },
+                      { label: 'Web', mbps: 4 },
+                      { label: 'High', mbps: 8 },
+                      { label: 'Studio', mbps: 14 },
+                      { label: 'Master', mbps: 24 },
+                    ].map((q) => (
+                      <button
+                        key={q.label}
+                        type="button"
+                        onClick={() => setExportBitrateMbps(q.mbps)}
+                        className={`py-1.5 rounded-md border text-[11px] font-medium transition-colors ${
+                          exportBitrateMbps === q.mbps
+                            ? 'studio-nav-bar-glow border-[#8B5CF6] text-[#F8FAFC]'
+                            : 'bg-[#09090D] border-[#292938] text-[#94A3B8] hover:text-[#F8FAFC]'
+                        }`}
+                      >
+                        <span className="block">{q.label}</span>
+                        <span className="block font-mono text-[10px] text-[#22D3EE]">{q.mbps}M</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="space-y-1">
                   <div className="flex justify-between">
-                    <span className="text-[#94A3B8]">Target Video Bitrate</span>
+                    <span className="text-[#94A3B8]">Fine Video Bitrate</span>
                     <span className="font-mono text-[#F8FAFC]">{exportBitrateMbps} Mbps</span>
                   </div>
                   <input
                     type="range"
-                    min={2}
-                    max={14}
-                    step={1}
+                    min={1}
+                    max={24}
+                    step={0.5}
                     value={exportBitrateMbps}
                     onChange={(e) => setExportBitrateMbps(Number(e.target.value))}
                     className="w-full"

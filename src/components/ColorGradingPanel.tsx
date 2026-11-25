@@ -1,8 +1,12 @@
-import { BookmarkPlus, RotateCcw, SplitSquareHorizontal, Trash2, Undo2 } from 'lucide-react';
+import { BookmarkPlus, Film, RotateCcw, SplitSquareHorizontal, Trash2, Undo2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useState } from 'react';
 import { trackAnonymousEvent } from '../engines/analyticsClient';
-import { COLOR_GRADING_PRESETS } from '../engines/videoEngine';
+import {
+  COLOR_GRADING_PRESETS,
+  COLOR_PRESET_SWATCHES,
+  VIDEO_GRADIENT_OVERLAYS,
+} from '../engines/videoEngine';
 import { useMixoraStore } from '../store/useMixoraStore';
 import type { ColorGradingSettings } from '../types/mixora';
 import { STUDIO_EASE, TabContentTransition } from './MotionPrimitives';
@@ -55,7 +59,7 @@ export function ColorGradingPanel({ compareSplit, onToggleCompareSplit }: ColorG
   const saveCustomPreset = useMixoraStore((s) => s.saveCustomPreset);
   const removeCustomPreset = useMixoraStore((s) => s.removeCustomPreset);
 
-  const [tab, setTab] = useState<'presets' | 'basic' | 'advanced'>('presets');
+  const [tab, setTab] = useState<'presets' | 'gradient' | 'basic' | 'advanced'>('presets');
   const [presetName, setPresetName] = useState('');
 
   const applyPreset = (name: string, settings: ColorGradingSettings) => {
@@ -71,7 +75,7 @@ export function ColorGradingPanel({ compareSplit, onToggleCompareSplit }: ColorG
   };
 
   const renderSlider = (spec: SliderSpec) => {
-    const val = Number(colorGrading[spec.key]);
+    const val = Number(colorGrading[spec.key] ?? 0);
     const step = spec.step ?? 1;
     return (
       <div key={spec.key} className="space-y-1">
@@ -101,15 +105,15 @@ export function ColorGradingPanel({ compareSplit, onToggleCompareSplit }: ColorG
     <div className="flex flex-col h-full">
       {/* Header actions */}
       <div className="flex items-center justify-between gap-2 pb-3 border-b border-[#292938]">
-        <div className="flex items-center gap-1 bg-[#09090D] p-1 rounded-md border border-[#292938]">
-          {(['presets', 'basic', 'advanced'] as const).map((t) => {
+        <div className="flex items-center gap-0.5 bg-[#09090D] p-1 rounded-md border border-[#292938]">
+          {(['presets', 'gradient', 'basic', 'advanced'] as const).map((t) => {
             const active = tab === t;
             return (
               <button
                 key={t}
                 type="button"
                 onClick={() => setTab(t)}
-                className={`relative px-2.5 py-1 text-xs font-medium rounded capitalize transition-colors whitespace-nowrap ${
+                className={`relative px-2 py-1 text-[11px] font-medium rounded capitalize transition-colors whitespace-nowrap ${
                   active ? 'text-[#F8FAFC]' : 'text-[#94A3B8] hover:text-[#F8FAFC]'
                 }`}
               >
@@ -126,7 +130,7 @@ export function ColorGradingPanel({ compareSplit, onToggleCompareSplit }: ColorG
           })}
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 shrink-0">
           <button
             type="button"
             onClick={onToggleCompareSplit}
@@ -162,84 +166,187 @@ export function ColorGradingPanel({ compareSplit, onToggleCompareSplit }: ColorG
       {/* Body */}
       <div className="flex-1 overflow-y-auto pt-3 pr-1">
         <TabContentTransition tabKey={tab} className="space-y-4">
-        {tab === 'presets' && (
-          <>
-            <div className="grid grid-cols-2 gap-2">
-              {Object.entries(COLOR_GRADING_PRESETS).map(([name, settings]) => {
-                const active = colorGrading.filterPreset === name;
-                return (
-                  <button
-                    key={name}
-                    type="button"
-                    onClick={() => applyPreset(name, settings)}
-                    className={`px-3 py-2.5 rounded-md border text-left text-xs font-medium transition-colors ${
-                      active
-                        ? 'bg-[#8B5CF6]/20 border-[#8B5CF6] text-[#F8FAFC]'
-                        : 'bg-[#1B1B27] border-[#292938] text-[#94A3B8] hover:text-[#F8FAFC] hover:border-[#3F3F56]'
-                    }`}
-                  >
-                    {name}
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="pt-3 border-t border-[#292938] space-y-2.5">
-              <p className="text-xs font-medium text-[#F8FAFC]">Save Current Look Locally</p>
-              <form onSubmit={handleSaveCustom} className="flex gap-2">
-                <input
-                  type="text"
-                  value={presetName}
-                  onChange={(e) => setPresetName(e.target.value)}
-                  placeholder="Preset name..."
-                  maxLength={32}
-                  className="flex-1 min-w-0 bg-[#09090D] border border-[#292938] rounded-md px-2.5 py-1.5 text-xs text-[#F8FAFC] placeholder:text-[#64748B]"
-                />
-                <StudioButton type="submit" variant="primary" size="xs">
-                  <BookmarkPlus className="w-3.5 h-3.5" />
-                  Save
-                </StudioButton>
-              </form>
-
-              {customPresets.length > 0 && (
-                <div className="space-y-1.5 pt-1">
-                  <p className="text-xs text-[#94A3B8]">Saved Local Presets</p>
-                  {customPresets.map((cp) => (
-                    <div
-                      key={cp.id}
-                      className="flex items-center justify-between gap-2 bg-[#1B1B27] border border-[#292938] rounded-md px-2.5 py-1.5"
+          {tab === 'presets' && (
+            <>
+              <div className="grid grid-cols-2 gap-2">
+                {Object.entries(COLOR_GRADING_PRESETS).map(([name, settings]) => {
+                  const active = colorGrading.filterPreset === name;
+                  const swatch = COLOR_PRESET_SWATCHES[name] ?? 'linear-gradient(135deg, #475569, #1E293B)';
+                  return (
+                    <button
+                      key={name}
+                      type="button"
+                      onClick={() => applyPreset(name, settings)}
+                      className={`p-2 rounded-lg border text-left transition-colors space-y-1.5 ${
+                        active
+                          ? 'bg-[#8B5CF6]/20 border-[#8B5CF6] text-[#F8FAFC]'
+                          : 'bg-[#1B1B27] border-[#292938] text-[#94A3B8] hover:text-[#F8FAFC] hover:border-[#3F3F56]'
+                      }`}
                     >
-                      <button
-                        type="button"
-                        onClick={() => applyPreset(cp.name, cp.settings)}
-                        className="text-xs text-[#F8FAFC] hover:text-[#22D3EE] truncate text-left flex-1"
+                      <div
+                        className="h-5 w-full rounded"
+                        style={{ backgroundImage: swatch }}
+                      />
+                      <span className="block text-[11px] font-medium truncate">{name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="pt-3 border-t border-[#292938] space-y-2.5">
+                <p className="text-xs font-medium text-[#F8FAFC]">Save Current Look Locally</p>
+                <form onSubmit={handleSaveCustom} className="flex gap-2">
+                  <input
+                    type="text"
+                    value={presetName}
+                    onChange={(e) => setPresetName(e.target.value)}
+                    placeholder="Preset name..."
+                    maxLength={32}
+                    className="flex-1 min-w-0 bg-[#09090D] border border-[#292938] rounded-md px-2.5 py-1.5 text-xs text-[#F8FAFC] placeholder:text-[#64748B]"
+                  />
+                  <StudioButton type="submit" variant="primary" size="xs">
+                    <BookmarkPlus className="w-3.5 h-3.5" />
+                    Save
+                  </StudioButton>
+                </form>
+
+                {customPresets.length > 0 && (
+                  <div className="space-y-1.5 pt-1">
+                    <p className="text-xs text-[#94A3B8]">Saved Local Presets</p>
+                    {customPresets.map((cp) => (
+                      <div
+                        key={cp.id}
+                        className="flex items-center justify-between gap-2 bg-[#1B1B27] border border-[#292938] rounded-md px-2.5 py-1.5"
                       >
-                        {cp.name}
-                      </button>
+                        <button
+                          type="button"
+                          onClick={() => applyPreset(cp.name, cp.settings)}
+                          className="text-xs text-[#F8FAFC] hover:text-[#22D3EE] truncate text-left flex-1"
+                        >
+                          {cp.name}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void removeCustomPreset(cp.id)}
+                          aria-label={`Delete preset ${cp.name}`}
+                          className="text-[#94A3B8] hover:text-[#F43F5E] p-1"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+
+          {tab === 'gradient' && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-[#F8FAFC]">Color Gradient LUT Tint</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.entries(VIDEO_GRADIENT_OVERLAYS).map(([key, spec]) => {
+                    const active = (colorGrading.gradientPreset ?? 'none') === key;
+                    const bg = spec.stops[2]
+                      ? `linear-gradient(135deg, ${spec.stops[0]}, ${spec.stops[1]}, ${spec.stops[2]})`
+                      : `linear-gradient(135deg, ${spec.stops[0]}, ${spec.stops[1]})`;
+                    return (
                       <button
+                        key={key}
                         type="button"
-                        onClick={() => void removeCustomPreset(cp.id)}
-                        aria-label={`Delete preset ${cp.name}`}
-                        className="text-[#94A3B8] hover:text-[#F43F5E] p-1"
+                        onClick={() =>
+                          setColorGrading(
+                            {
+                              gradientPreset: key,
+                              gradientOpacity:
+                                key === 'none'
+                                  ? 0
+                                  : Math.max(24, colorGrading.gradientOpacity ?? 30),
+                              filterPreset: 'Custom',
+                            },
+                            true
+                          )
+                        }
+                        className={`p-2 rounded-lg border text-left space-y-1.5 transition-colors ${
+                          active
+                            ? 'bg-[#8B5CF6]/20 border-[#8B5CF6] text-[#F8FAFC]'
+                            : 'bg-[#1B1B27] border-[#292938] text-[#94A3B8] hover:text-[#F8FAFC]'
+                        }`}
                       >
-                        <Trash2 className="w-3.5 h-3.5" />
+                        <div className="h-5 rounded w-full" style={{ backgroundImage: bg }} />
+                        <span className="block text-[11px] font-medium truncate">{spec.label}</span>
                       </button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
-              )}
+              </div>
+
+              <div className="space-y-1.5">
+                <div className="flex justify-between text-xs">
+                  <span className="text-[#94A3B8]">Gradient Blend Opacity</span>
+                  <span className="font-mono tabular-nums text-[#F8FAFC]">
+                    {colorGrading.gradientOpacity ?? 0}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={80}
+                  step={1}
+                  value={colorGrading.gradientOpacity ?? 0}
+                  onChange={(e) =>
+                    setColorGrading({ gradientOpacity: Number(e.target.value), filterPreset: 'Custom' }, false)
+                  }
+                  onPointerDown={() => setColorGrading({}, true)}
+                  className="w-full"
+                />
+              </div>
+
+              <div className="space-y-1.5 pt-2 border-t border-[#292938]">
+                <div className="flex justify-between text-xs">
+                  <span className="text-[#94A3B8]">Cinema Vignette</span>
+                  <span className="font-mono tabular-nums text-[#F8FAFC]">
+                    {colorGrading.vignette ?? 0}%
+                  </span>
+                </div>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={1}
+                  value={colorGrading.vignette ?? 0}
+                  onChange={(e) =>
+                    setColorGrading({ vignette: Number(e.target.value), filterPreset: 'Custom' }, false)
+                  }
+                  onPointerDown={() => setColorGrading({}, true)}
+                  className="w-full"
+                />
+              </div>
+
+              <label className="flex items-center justify-between pt-2 border-t border-[#292938] text-xs text-[#F8FAFC] cursor-pointer">
+                <span className="inline-flex items-center gap-1.5">
+                  <Film className="w-3.5 h-3.5 text-[#8B5CF6]" />
+                  Anamorphic 2.39:1 Cinema Bars
+                </span>
+                <input
+                  type="checkbox"
+                  checked={Boolean(colorGrading.cinemaBars)}
+                  onChange={(e) => setColorGrading({ cinemaBars: e.target.checked }, true)}
+                  className="accent-[#8B5CF6] w-4 h-4"
+                />
+              </label>
             </div>
-          </>
-        )}
+          )}
 
-        {tab === 'basic' && <div className="space-y-3">{BASIC_SLIDERS.map(renderSlider)}</div>}
+          {tab === 'basic' && <div className="space-y-3">{BASIC_SLIDERS.map(renderSlider)}</div>}
 
-        {tab === 'advanced' && <div className="space-y-3">{ADVANCED_SLIDERS.map(renderSlider)}</div>}
+          {tab === 'advanced' && <div className="space-y-3">{ADVANCED_SLIDERS.map(renderSlider)}</div>}
         </TabContentTransition>
       </div>
 
       <p className="text-[11px] text-[#94A3B8] pt-3 mt-2 border-t border-[#292938] leading-relaxed">
-        Pixel-accurate grading runs on Canvas2D so preview and exported video match identically.
+        Pixel-accurate grading, gradient LUTs, vignette & cinema bars bake identically into exported video.
       </p>
     </div>
   );

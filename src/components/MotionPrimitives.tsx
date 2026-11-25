@@ -204,13 +204,22 @@ export function TabContentTransition({ tabKey, children, className = '' }: TabCo
 interface ModalTransitionProps {
   open: boolean;
   onBackdropClick?: () => void;
+  onClose?: () => void;
+  maxWidthClass?: string;
   children: ReactNode;
 }
 
 /**
  * Animated modal backdrop and dialog entrance/exit transition.
  */
-export function ModalTransition({ open, onBackdropClick, children }: ModalTransitionProps) {
+export function ModalTransition({
+  open,
+  onBackdropClick,
+  onClose,
+  maxWidthClass = 'max-w-md',
+  children,
+}: ModalTransitionProps) {
+  const handleBackdrop = onBackdropClick ?? onClose;
   return (
     <AnimatePresence>
       {open && (
@@ -219,7 +228,7 @@ export function ModalTransition({ open, onBackdropClick, children }: ModalTransi
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.18 }}
-          onClick={onBackdropClick}
+          onClick={handleBackdrop}
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-[2px] p-4"
         >
           <motion.div
@@ -228,7 +237,7 @@ export function ModalTransition({ open, onBackdropClick, children }: ModalTransi
             exit={{ opacity: 0, scale: 0.96, y: 8 }}
             transition={{ duration: 0.22, ease: STUDIO_EASE }}
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md"
+            className={`w-full ${maxWidthClass}`}
           >
             {children}
           </motion.div>

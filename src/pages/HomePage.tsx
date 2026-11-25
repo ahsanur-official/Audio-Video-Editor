@@ -16,6 +16,7 @@ import {
 import { AnimatePresence, motion } from 'motion/react';
 import { useState } from 'react';
 import { HeroWaveformPreview } from '../components/HeroWaveformPreview';
+import { MixoraLogo } from '../components/MixoraLogo';
 import {
   ParallaxFrame,
   ScrollProgressBar,
@@ -67,50 +68,69 @@ export function HomePage() {
   return (
     <div className="min-h-screen bg-[#09090D] text-[#F8FAFC]">
       <ScrollProgressBar />
-      {/* Strict 3-Zone Top Bar Contract */}
-      <header className="sticky top-0 z-40 bg-[#09090D]/90 backdrop-blur-md border-b border-[#292938]">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between gap-8">
+      {/* Polished Top Navigation Bar */}
+      <header className="sticky top-0 z-40 bg-[#09090D]/85 backdrop-blur-md border-b border-[#292938]/90">
+        <div
+          aria-hidden="true"
+          className="h-[2px] w-full bg-gradient-to-r from-[#8B5CF6] via-[#3B82F6] to-[#22D3EE]"
+        />
+        <div className="w-full max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 h-[76px] flex items-center justify-between gap-6">
           <button
             type="button"
             onClick={() => navigate('home')}
-            className="font-display text-xl font-bold tracking-tight text-[#F8FAFC] whitespace-nowrap shrink-0"
+            className="flex items-center gap-3 group whitespace-nowrap shrink-0"
           >
-            MIXORA
+            <MixoraLogo className="w-12 h-12 sm:w-14 sm:h-14 transition-transform duration-200 group-hover:scale-105" />
+            <div className="text-left">
+              <span className="block font-display text-xl sm:text-2xl font-bold tracking-tight studio-gradient-text leading-none">
+                MIXORA
+              </span>
+              <span className="hidden sm:block text-[10px] text-[#94A3B8] tracking-[0.16em] uppercase mt-1">
+                Audio · Video · Mashup
+              </span>
+            </div>
           </button>
 
-          <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-[#94A3B8]">
+          <nav className="hidden md:flex items-center gap-1.5 bg-[#14141D]/80 border border-[#292938]/80 rounded-lg p-1 text-xs font-medium text-[#94A3B8]">
             <button
               type="button"
               onClick={() => scrollToSection('creative-tools')}
-              className="hover:text-[#F8FAFC] transition-colors whitespace-nowrap shrink-0"
+              className="px-3 py-1.5 rounded-md hover:text-[#F8FAFC] hover:bg-[#1B1B27] transition-colors whitespace-nowrap shrink-0"
             >
               Tools
             </button>
             <button
               type="button"
               onClick={() => navigate('audio')}
-              className="hover:text-[#F8FAFC] transition-colors whitespace-nowrap shrink-0"
+              className="px-3 py-1.5 rounded-md hover:text-[#F8FAFC] hover:bg-[#1B1B27] transition-colors whitespace-nowrap shrink-0"
             >
               Audio Studio
             </button>
             <button
               type="button"
+              onClick={() => navigate('mashup')}
+              className="px-3 py-1.5 rounded-md hover:text-[#F8FAFC] hover:bg-[#1B1B27] transition-colors whitespace-nowrap shrink-0"
+            >
+              Mashup
+            </button>
+            <button
+              type="button"
               onClick={() => navigate('video')}
-              className="hover:text-[#F8FAFC] transition-colors whitespace-nowrap shrink-0"
+              className="px-3 py-1.5 rounded-md hover:text-[#F8FAFC] hover:bg-[#1B1B27] transition-colors whitespace-nowrap shrink-0"
             >
               Video Studio
             </button>
             <button
               type="button"
               onClick={() => navigate('dj')}
-              className="hover:text-[#F8FAFC] transition-colors whitespace-nowrap shrink-0"
+              className="px-3 py-1.5 rounded-md hover:text-[#F8FAFC] hover:bg-[#1B1B27] transition-colors whitespace-nowrap shrink-0"
             >
               DJ Mixer
             </button>
             <button
               type="button"
               onClick={() => navigate('ai')}
-              className="hover:text-[#F8FAFC] transition-colors whitespace-nowrap shrink-0"
+              className="px-3 py-1.5 rounded-md hover:text-[#F8FAFC] hover:bg-[#1B1B27] transition-colors whitespace-nowrap shrink-0"
             >
               AI Lab
             </button>
@@ -120,7 +140,7 @@ export function HomePage() {
             variant="primary"
             size="sm"
             onClick={() => navigate('dashboard')}
-            className="text-sm font-medium"
+            className="text-sm font-medium bg-gradient-to-r from-[#8B5CF6] to-[#3B82F6] hover:from-[#7C3AED] hover:to-[#2563EB] border-0 shadow-[0_0_24px_rgba(139,92,246,0.28)]"
           >
             Start Creating
           </StudioButton>
@@ -128,8 +148,9 @@ export function HomePage() {
       </header>
 
       {/* 1. Hero Section */}
-      <section className="max-w-7xl mx-auto px-6 pt-16 pb-20 lg:pt-20 lg:pb-24">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+      <section className="studio-ambient-hero border-b border-[#292938]/50">
+        <div className="w-full max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 pt-14 pb-20 lg:pt-18 lg:pb-24">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 xl:gap-16 items-center">
           <motion.div
             initial="hidden"
             animate="visible"
@@ -139,15 +160,23 @@ export function HomePage() {
             }}
             className="lg:col-span-6 space-y-6"
           >
-            <motion.p
+            <motion.div
               variants={{
                 hidden: { opacity: 0, y: 16 },
                 visible: { opacity: 1, y: 0, transition: { duration: 0.42, ease: STUDIO_EASE } },
               }}
-              className="text-sm font-medium text-[#22D3EE] tracking-wide"
+              className="flex items-center gap-4"
             >
-              Create. Mix. Edit. Enhance. Export.
-            </motion.p>
+              <MixoraLogo className="w-16 h-16 sm:w-20 sm:h-20" />
+              <div>
+                <p className="text-xs sm:text-sm font-semibold text-[#22D3EE] tracking-wide">
+                  Create. Mix. Edit. Enhance. Export.
+                </p>
+                <p className="text-xs text-[#94A3B8] mt-0.5">
+                  All-in-One Browser Audio, Video &amp; Mashup Studio
+                </p>
+              </div>
+            </motion.div>
             <motion.h1
               variants={{
                 hidden: { opacity: 0, y: 20 },
@@ -155,7 +184,8 @@ export function HomePage() {
               }}
               className="font-display text-4xl sm:text-5xl lg:text-[3.5rem] font-bold tracking-tight leading-[1.08] text-[#F8FAFC]"
             >
-              Your Creative Studio. Completely Free.
+              Your Creative Studio.{' '}
+              <span className="studio-gradient-text">Completely Free.</span>
             </motion.h1>
             <motion.p
               variants={{
@@ -217,11 +247,12 @@ export function HomePage() {
             <HeroWaveformPreview />
           </motion.div>
         </div>
+        </div>
       </section>
 
       {/* 2. Creative Tools (Asymmetric Bento Grid) */}
       <section id="creative-tools" className="border-t border-[#292938] py-20">
-        <div className="max-w-7xl mx-auto px-6">
+        <div className="w-full max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14">
           <ScrollReveal className="max-w-2xl mb-12">
             <h2 className="font-display text-3xl font-bold tracking-tight text-[#F8FAFC]">
               Six integrated workspaces in one browser tab
@@ -344,7 +375,7 @@ export function HomePage() {
 
       {/* 3. Audio Studio Spotlight */}
       <section className="border-t border-[#292938] py-20 overflow-x-clip">
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 items-stretch">
+        <div className="w-full max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 grid grid-cols-1 lg:grid-cols-12 gap-12 xl:gap-16 items-stretch">
           <ScrollReveal direction="right" className="lg:col-span-6 flex flex-col justify-center space-y-5">
             <p className="text-xs font-medium text-[#22D3EE]">01. Audio Studio & DJ Mixing</p>
             <h2 className="font-display text-3xl font-bold tracking-tight text-[#F8FAFC]">
@@ -398,7 +429,7 @@ export function HomePage() {
 
       {/* 4. Video Studio & Color Correction Spotlight */}
       <section className="border-t border-[#292938] py-20 bg-[#0D0D14] overflow-x-clip">
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 items-stretch">
+        <div className="w-full max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 grid grid-cols-1 lg:grid-cols-12 gap-12 xl:gap-16 items-stretch">
           <ScrollReveal direction="right" delay={0.08} className="lg:col-span-6 order-2 lg:order-1">
             <ParallaxFrame className="h-full min-h-[280px] rounded-xl border border-[#292938] bg-[#14141D]">
               {!imgErrors.video ? (
@@ -445,7 +476,7 @@ export function HomePage() {
 
       {/* 5. AI Lab & DJ / Mashup Intelligence */}
       <section className="border-t border-[#292938] py-20 overflow-x-clip">
-        <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 items-stretch">
+        <div className="w-full max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 grid grid-cols-1 lg:grid-cols-12 gap-12 xl:gap-16 items-stretch">
           <ScrollReveal direction="right" className="lg:col-span-6 flex flex-col justify-center space-y-5">
             <p className="text-xs font-medium text-[#A3E635]">03. Local AI Lab & Mashup Engine</p>
             <h2 className="font-display text-3xl font-bold tracking-tight text-[#F8FAFC]">
@@ -499,7 +530,7 @@ export function HomePage() {
 
       {/* 6. How It Works */}
       <section className="border-t border-[#292938] py-20 bg-[#0D0D14]">
-        <div className="max-w-7xl mx-auto px-6">
+        <div className="w-full max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14">
           <ScrollReveal>
             <h2 className="font-display text-3xl font-bold tracking-tight text-[#F8FAFC] mb-10">
               How MIXORA works
@@ -535,7 +566,7 @@ export function HomePage() {
 
       {/* 7. Privacy First & 8. Why MIXORA */}
       <section className="border-t border-[#292938] py-20">
-        <StaggerGroup className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-2 gap-12">
+        <StaggerGroup className="w-full max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 grid grid-cols-1 lg:grid-cols-2 gap-12">
           <StaggerItem className="bg-[#14141D] border border-[#292938] rounded-xl p-8 space-y-5">
             <Lock className="w-6 h-6 text-[#A3E635]" />
             <h2 className="font-display text-2xl font-bold text-[#F8FAFC]">
@@ -600,7 +631,7 @@ export function HomePage() {
 
       {/* 9. FAQ */}
       <section className="border-t border-[#292938] py-20 bg-[#0D0D14]">
-        <div className="max-w-3xl mx-auto px-6">
+        <div className="w-full max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14">
           <ScrollReveal>
             <h2 className="font-display text-3xl font-bold tracking-tight text-[#F8FAFC] mb-8">
               Frequently asked questions
@@ -647,13 +678,16 @@ export function HomePage() {
       <footer className="border-t border-[#292938] py-12">
         <ScrollReveal
           distance={16}
-          className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-6"
+          className="w-full max-w-[1720px] mx-auto px-4 sm:px-6 lg:px-10 xl:px-14 flex flex-col md:flex-row items-start md:items-center justify-between gap-6"
         >
-          <div>
-            <p className="font-display text-lg font-bold tracking-tight text-[#F8FAFC]">MIXORA</p>
-            <p className="text-xs text-[#94A3B8] mt-1">
-              Free All-in-One Audio & Video Creative Studio · Local Browser Processing
-            </p>
+          <div className="flex items-center gap-4">
+            <MixoraLogo className="w-14 h-14" />
+            <div>
+              <p className="font-display text-lg font-bold tracking-tight studio-gradient-text">MIXORA</p>
+              <p className="text-xs text-[#94A3B8] mt-1">
+                Free All-in-One Audio &amp; Video Creative Studio · Local Browser Processing
+              </p>
+            </div>
           </div>
           <div className="flex flex-wrap items-center gap-6 text-sm text-[#94A3B8]">
             <button type="button" onClick={() => navigate('dashboard')} className="hover:text-[#F8FAFC] transition-colors">

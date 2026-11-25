@@ -1,15 +1,19 @@
-import { Disc3, Pause, Play, RefreshCw, Repeat, Upload, Volume2 } from 'lucide-react';
+import { Circle, Disc3, Pause, Play, RefreshCw, Repeat, Square, Upload, Volume2, Zap } from 'lucide-react';
+import { motion } from 'motion/react';
 import { useEffect, useRef, useState } from 'react';
 import { ScrollReveal, StaggerGroup, StaggerItem } from '../components/MotionPrimitives';
 import { StudioButton } from '../components/StudioButton';
 import { WaveformCanvas } from '../components/WaveformCanvas';
 import { analyzeAudioBuffer } from '../engines/audioAnalysis';
 import {
+  DJ_SAMPLER_PADS,
   decodeAudioFile,
   extractWaveformPeaks,
   generateProceduralDemoTrack,
   getAudioContext,
+  triggerDjSamplerPad,
 } from '../engines/audioEngine';
+import { triggerBlobDownload } from '../engines/storageEngine';
 import { useMixoraStore } from '../store/useMixoraStore';
 
 interface DeckState {
@@ -65,6 +69,9 @@ export function DJMixerPage() {
   const [crossfader, setCrossfader] = useState(0); // -1 (Full A) to +1 (Full B)
   const [masterVolume, setMasterVolume] = useState(0.9);
   const [vuLevel, setVuLevel] = useState(0);
+  const [isRecordingMix, setIsRecordingMix] = useState(false);
+  const [recordSeconds, setRecordSeconds] = useState(0);
+  const [activePad, setActivePad] = useState<string | null>(null);
 
   const inputARef = useRef<HTMLInputElement | null>(null);
   const inputBRef = useRef<HTMLInputElement | null>(null);
@@ -72,6 +79,10 @@ export function DJMixerPage() {
   const nodesBRef = useRef<DeckAudioNodes | null>(null);
   const masterGainRef = useRef<GainNode | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
+  const recordDestRef = useRef<MediaStreamAudioDestinationNode | null>(null);
+  const mixRecorderRef = useRef<MediaRecorder | null>(null);
+  const mixChunksRef = useRef<BlobPart[]>([]);
+  const recordTimerRef = useRef<number | null>(null);
 
   const ensureMasterBus = () => {
     const ctx = getAudioContext();
@@ -80,12 +91,20 @@ export function DJMixerPage() {
       mg.gain.value = masterVolume;
       const an = ctx.createAnalyser();
       an.fftSize = 256;
+      const recDest = ctx.createMediaStreamDestination();
       mg.connect(an);
       an.connect(ctx.destination);
+      mg.connect(recDest);
       masterGainRef.current = mg;
       analyserRef.current = an;
+      recordDestRef.current = recDest;
     }
-    return { ctx, masterGain: masterGainRef.current, analyser: analyserRef.current! };
+    return {
+      ctx,
+      masterGain: masterGainRef.current,
+      analyser: analyserRef.current!,
+      recordDest: recordDestRef.current!,
+    };
   };
 
   const stopDeckNode = (which: 'A' | 'B') => {
@@ -102,10 +121,83 @@ export function DJMixerPage() {
     ref.current = null;
   };
 
+  const handleFirePad = (padId: string) => {
+    const { ctx, masterGain } = ensureMasterBus();
+    triggerDjSamplerPad(ctx, masterGain, padId);
+    setActivePad(padId);
+    window.setTimeout(() => setActivePad((p) => (p === padId ? null : p)), 150);
+  };
+
+  const toggleLiveMixRecording = () => {
+    if (isRecordingMix) {
+      mixRecorderRef.current?.stop();
+      setIsRecordingMix(false);
+      if (recordTimerRef.current) {
+        window.clearInterval(recordTimerRef.current);
+        recordTimerRef.current = null;
+      }
+      return;
+    }
+
+    const { recordDest } = ensureMasterBus();
+    const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+      ? 'audio/webm;codecs=opus'
+      : MediaRecorder.isTypeSupported('audio/webm')
+        ? 'audio/webm'
+        : '';
+    try {
+      const rec = mime
+        ? new MediaRecorder(recordDest.stream, { mimeType: mime, audioBitsPerSecond: 256_000 })
+        : new MediaRecorder(recordDest.stream);
+      mixChunksRef.current = [];
+      rec.ondataavailable = (ev) => {
+        if (ev.data.size > 0) mixChunksRef.current.push(ev.data);
+      };
+      rec.onstop = () => {
+        const blob = new Blob(mixChunksRef.current, { type: rec.mimeType || 'audio/webm' });
+        if (blob.size > 0) {
+          triggerBlobDownload(blob, `mixora-dj-live-set-${Date.now()}.webm`);
+          pushToast({
+            type: 'success',
+            title: 'Saved live DJ set recording!',
+            detail: 'Captured directly from the Web Audio master bus.',
+          });
+        }
+      };
+      mixRecorderRef.current = rec;
+      rec.start(250);
+      setRecordSeconds(0);
+      setIsRecordingMix(true);
+      recordTimerRef.current = window.setInterval(() => setRecordSeconds((s) => s + 1), 1000);
+      pushToast({ type: 'info', title: 'Recording live DJ master output...' });
+    } catch (err) {
+      pushToast({
+        type: 'error',
+        title: 'Live mix recording unavailable',
+        detail: err instanceof Error ? err.message : 'MediaRecorder audio capture unsupported.',
+      });
+    }
+  };
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.tagName === 'INPUT' || target?.tagName === 'TEXTAREA' || target?.tagName === 'SELECT') return;
+      const pad = DJ_SAMPLER_PADS.find((p) => p.keyHint === e.key);
+      if (pad) handleFirePad(pad.id);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   useEffect(() => {
     return () => {
       stopDeckNode('A');
       stopDeckNode('B');
+      if (recordTimerRef.current) window.clearInterval(recordTimerRef.current);
+      if (mixRecorderRef.current && mixRecorderRef.current.state !== 'inactive') {
+        mixRecorderRef.current.stop();
+      }
     };
   }, []);
 
@@ -552,7 +644,7 @@ export function DJMixerPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-6">
+    <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 border-b border-[#292938] pb-5">
         <div>
           <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-[#F8FAFC]">
@@ -563,14 +655,32 @@ export function DJMixerPage() {
           </p>
         </div>
 
-        <StudioButton
-          variant="primary"
-          size="sm"
-          onClick={() => void loadDemoDecks()}
-          className="self-start sm:self-auto"
-        >
-          Load Demo DJ Tracks (A + B)
-        </StudioButton>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <StudioButton
+            variant={isRecordingMix ? 'danger' : 'secondary'}
+            size="sm"
+            onClick={toggleLiveMixRecording}
+          >
+            {isRecordingMix ? (
+              <>
+                <Square className="w-3.5 h-3.5" />
+                Stop Rec ({recordSeconds}s)
+              </>
+            ) : (
+              <>
+                <Circle className="w-3.5 h-3.5 text-[#F43F5E] fill-[#F43F5E]" />
+                Record Live Mix
+              </>
+            )}
+          </StudioButton>
+          <StudioButton
+            variant="primary"
+            size="sm"
+            onClick={() => void loadDemoDecks()}
+          >
+            Load Demo DJ Tracks (A + B)
+          </StudioButton>
+        </div>
       </div>
 
       {/* Decks */}
@@ -657,6 +767,51 @@ export function DJMixerPage() {
               Smooth Fade → B
             </button>
           </div>
+        </div>
+      </ScrollReveal>
+
+      {/* 8-Pad Instant DJ Performance FX & Drum Sampler */}
+      <ScrollReveal className="bg-[#14141D] border border-[#292938] rounded-xl p-5 space-y-3.5">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <Zap className="w-4 h-4 text-[#22D3EE]" />
+            <h2 className="font-display text-sm font-semibold text-[#F8FAFC]">
+              8-Pad Live FX & Drum Sampler
+            </h2>
+          </div>
+          <span className="text-[11px] text-[#94A3B8]">
+            Click pads or press keys <span className="font-mono text-[#F8FAFC]">1–8</span> · Routed to Master & Live Rec
+          </span>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5">
+          {DJ_SAMPLER_PADS.map((pad) => {
+            const lit = activePad === pad.id;
+            return (
+              <motion.button
+                key={pad.id}
+                type="button"
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.94 }}
+                onClick={() => handleFirePad(pad.id)}
+                style={{
+                  borderColor: lit ? pad.accent : '#292938',
+                  boxShadow: lit ? `0 0 18px ${pad.accent}55` : 'none',
+                }}
+                className="relative rounded-lg bg-[#09090D] hover:bg-[#1B1B27] border p-3 text-left transition-colors overflow-hidden"
+              >
+                <span
+                  className="block h-1 w-8 rounded-full mb-2"
+                  style={{ backgroundColor: pad.accent }}
+                />
+                <span className="block text-xs font-semibold text-[#F8FAFC] truncate">
+                  {pad.label}
+                </span>
+                <span className="block text-[10px] font-mono text-[#64748B] mt-0.5">
+                  KEY {pad.keyHint}
+                </span>
+              </motion.button>
+            );
+          })}
         </div>
       </ScrollReveal>
     </div>

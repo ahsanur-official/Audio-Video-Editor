@@ -100,6 +100,10 @@ export interface ColorGradingSettings {
   gamma: number; // 0.5 to 2.0
   lift: number; // -50 to 50
   gain: number; // 0.5 to 2.0
+  vignette: number; // 0 to 100
+  gradientPreset: string; // 'none' | 'violet-cyan' | 'teal-orange' | 'sunset' | 'cyberpunk' | 'golden' | 'rose-gold'
+  gradientOpacity: number; // 0 to 80
+  cinemaBars: boolean;
   filterPreset: string;
 }
 
@@ -122,8 +126,19 @@ export const DEFAULT_COLOR_GRADING: ColorGradingSettings = {
   gamma: 1,
   lift: 0,
   gain: 1,
+  vignette: 0,
+  gradientPreset: 'none',
+  gradientOpacity: 0,
+  cinemaBars: false,
   filterPreset: 'Natural',
 };
+
+export type AudioExportFormat = 'wav' | 'mp3';
+export type AudioBitDepth = 16 | 24 | 32;
+export type AudioSampleRate = 22050 | 44100 | 48000 | 96000;
+export type Mp3Bitrate = 64 | 96 | 128 | 192 | 256 | 320;
+export type VideoResolutionOption = '360p' | '480p' | '720p' | '1080p' | '1440p' | '2160p' | 'source';
+export type VideoAspectRatioOption = 'original' | '16:9' | '9:16' | '1:1' | '4:5';
 
 export interface CustomColorPreset {
   id: string;
@@ -195,10 +210,10 @@ export interface MixoraProject {
   videoMarkers: TimelineMarker[];
   colorGrading: ColorGradingSettings;
   exportConfig: {
-    audioFormat: 'wav' | 'mp3';
+    audioFormat: AudioExportFormat;
     audioBitrate: number;
     videoFormat: string;
-    videoResolution: '480p' | '720p' | '1080p' | 'source';
+    videoResolution: VideoResolutionOption;
     videoFps: number;
   };
 }

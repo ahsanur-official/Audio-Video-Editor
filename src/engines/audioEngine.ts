@@ -271,13 +271,76 @@ export function buildTrackEffectChain(ctx: BaseAudioContext, fx: AudioTrackEffec
 }
 
 /**
+ * Peak-normalizes an AudioBuffer in place to targetPeak (default -1 dBFS = 0.89125).
+ */
+export function normalizeAudioBuffer(buffer: AudioBuffer, targetPeak = 0.89125): AudioBuffer {
+  let maxPeak = 0;
+  for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+    const data = buffer.getChannelData(ch);
+    for (let i = 0; i < data.length; i++) {
+      const a = Math.abs(data[i]);
+      if (a > maxPeak) maxPeak = a;
+    }
+  }
+  if (maxPeak <= 0.00001) return buffer;
+  const gain = targetPeak / maxPeak;
+  for (let ch = 0; ch < buffer.numberOfChannels; ch++) {
+    const data = buffer.getChannelData(ch);
+    for (let i = 0; i < data.length; i++) {
+      data[i] = Math.max(-1, Math.min(1, data[i] * gain));
+    }
+  }
+  return buffer;
+}
+
+/**
+ * Resamples an AudioBuffer to a new sample rate and/or channel count via OfflineAudioContext.
+ */
+export async function resampleAudioBuffer(
+  buffer: AudioBuffer,
+  targetSampleRate: number,
+  targetChannels: 1 | 2 = Math.min(2, buffer.numberOfChannels) as 1 | 2
+): Promise<AudioBuffer> {
+  if (buffer.sampleRate === targetSampleRate && buffer.numberOfChannels === targetChannels) {
+    return buffer;
+  }
+  const length = Math.max(1, Math.ceil(buffer.duration * targetSampleRate));
+  const offline = new OfflineAudioContext(targetChannels, length, targetSampleRate);
+  const src = offline.createBufferSource();
+  src.buffer = buffer;
+  src.connect(offline.destination);
+  src.start(0);
+  return await offline.startRendering();
+}
+
+/**
+ * Estimates final exported audio size in bytes for live UI quality feedback.
+ */
+export function estimateAudioExportBytes(
+  durationSec: number,
+  format: 'wav' | 'mp3',
+  sampleRate: number,
+  channels: 1 | 2,
+  bitDepthOrKbps: number
+): number {
+  const safeDur = Math.max(0.1, durationSec);
+  if (format === 'wav') {
+    const bytesPerSample = bitDepthOrKbps / 8;
+    return Math.round(44 + safeDur * sampleRate * channels * bytesPerSample);
+  }
+  return Math.round((safeDur * bitDepthOrKbps * 1000) / 8);
+}
+
+/**
  * Renders multitrack arrangement (or a selected region) offline through all real Web Audio effects.
  */
 export async function renderMixOffline(
   tracks: AudioTrackModel[],
   masterVolume: number,
   region?: { start: number; end: number },
-  sampleRate = 44100
+  sampleRate = 44100,
+  channels: 1 | 2 = 2,
+  normalize = false
 ): Promise<AudioBuffer> {
   const anySolo = tracks.some((t) => t.solo);
   const playable = tracks.filter((t) => t.buffer && !t.mute && (!anySolo || t.solo));
@@ -288,7 +351,10 @@ export async function renderMixOffline(
   let totalDuration = 0;
   for (const t of playable) {
     const clipDur = Math.max(0.05, (t.trimEnd - t.trimStart) / Math.max(0.25, t.speed));
-    totalDuration = Math.max(totalDuration, t.startOffset + clipDur + (t.effects.reverbMix > 0 || t.effects.echoMix > 0 ? 1.5 : 0));
+    totalDuration = Math.max(
+      totalDuration,
+      t.startOffset + clipDur + (t.effects.reverbMix > 0 || t.effects.echoMix > 0 ? 1.5 : 0)
+    );
   }
 
   const startSec = region ? Math.max(0, region.start) : 0;
@@ -296,7 +362,7 @@ export async function renderMixOffline(
   const renderDur = Math.max(0.1, endSec - startSec);
   const totalSamples = Math.ceil(renderDur * sampleRate);
 
-  const offlineCtx = new OfflineAudioContext(2, totalSamples, sampleRate);
+  const offlineCtx = new OfflineAudioContext(channels, totalSamples, sampleRate);
   const masterGain = offlineCtx.createGain();
   masterGain.gain.value = masterVolume;
   masterGain.connect(offlineCtx.destination);
@@ -350,13 +416,14 @@ export async function renderMixOffline(
     source.start(scheduleAt, bufferOffset, bufferDuration);
   }
 
-  return await offlineCtx.startRendering();
+  const rendered = await offlineCtx.startRendering();
+  return normalize ? normalizeAudioBuffer(rendered) : rendered;
 }
 
 /**
- * Encodes an AudioBuffer into a true PCM WAV Blob (16-bit or 24-bit).
+ * Encodes an AudioBuffer into a true WAV Blob (16-bit PCM, 24-bit PCM, or 32-bit IEEE Float).
  */
-export function encodeAudioBufferToWav(buffer: AudioBuffer, bitDepth: 16 | 24 = 16): Blob {
+export function encodeAudioBufferToWav(buffer: AudioBuffer, bitDepth: 16 | 24 | 32 = 16): Blob {
   const numChannels = Math.min(2, buffer.numberOfChannels);
   const sampleRate = buffer.sampleRate;
   const bytesPerSample = bitDepth / 8;
@@ -375,8 +442,8 @@ export function encodeAudioBufferToWav(buffer: AudioBuffer, bitDepth: 16 | 24 = 
   view.setUint32(4, 36 + dataSize, true);
   writeString(8, 'WAVE');
   writeString(12, 'fmt ');
-  view.setUint32(16, 16, true); // PCM chunk size
-  view.setUint16(20, 1, true); // PCM format
+  view.setUint32(16, 16, true); // fmt chunk size
+  view.setUint16(20, bitDepth === 32 ? 3 : 1, true); // 3 = IEEE Float, 1 = Linear PCM
   view.setUint16(22, numChannels, true);
   view.setUint32(24, sampleRate, true);
   view.setUint32(28, sampleRate * blockAlign, true);
@@ -397,12 +464,15 @@ export function encodeAudioBufferToWav(buffer: AudioBuffer, bitDepth: 16 | 24 = 
       if (bitDepth === 16) {
         view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
         offset += 2;
-      } else {
+      } else if (bitDepth === 24) {
         const val = Math.round(sample < 0 ? sample * 0x800000 : sample * 0x7fffff);
         view.setUint8(offset, val & 0xff);
         view.setUint8(offset + 1, (val >> 8) & 0xff);
         view.setUint8(offset + 2, (val >> 16) & 0xff);
         offset += 3;
+      } else {
+        view.setFloat32(offset, sample, true);
+        offset += 4;
       }
     }
   }
@@ -412,19 +482,22 @@ export function encodeAudioBufferToWav(buffer: AudioBuffer, bitDepth: 16 | 24 = 
 
 /**
  * Encodes an AudioBuffer into a true MP3 Blob using pure-JS LAME encoder in async chunks.
+ * Automatically resamples >48kHz buffers down to 48kHz for MP3 MPEG-1 spec compliance.
  */
 export async function encodeAudioBufferToMp3(
   buffer: AudioBuffer,
   kbps = 192,
   onProgress?: (pct: number) => void
 ): Promise<Blob> {
-  const numChannels = Math.min(2, buffer.numberOfChannels);
-  const sampleRate = buffer.sampleRate;
+  const safeBuffer =
+    buffer.sampleRate > 48000 ? await resampleAudioBuffer(buffer, 48000) : buffer;
+  const numChannels = Math.min(2, safeBuffer.numberOfChannels);
+  const sampleRate = safeBuffer.sampleRate;
   const encoder = new Mp3Encoder(numChannels, sampleRate, kbps);
 
-  const leftFloat = buffer.getChannelData(0);
-  const rightFloat = numChannels > 1 ? buffer.getChannelData(1) : leftFloat;
-  const totalSamples = buffer.length;
+  const leftFloat = safeBuffer.getChannelData(0);
+  const rightFloat = numChannels > 1 ? safeBuffer.getChannelData(1) : leftFloat;
+  const totalSamples = safeBuffer.length;
   const chunkSize = 1152 * 16;
   const mp3Parts: Uint8Array[] = [];
 
@@ -446,7 +519,6 @@ export async function encodeAudioBufferToMp3(
     if (onProgress) {
       onProgress(Math.min(95, Math.round((end / totalSamples) * 95)));
     }
-    // Yield to UI thread to avoid blocking
     await new Promise((r) => setTimeout(r, 0));
   }
 
@@ -460,14 +532,290 @@ export async function encodeAudioBufferToMp3(
 }
 
 /**
+ * One-click studio mastering & creative FX presets backed by real Web Audio DSP chains.
+ */
+export const AUDIO_FX_PRESETS: Record<
+  string,
+  { label: string; badge: string; effects: AudioTrackEffects }
+> = {
+  flat: {
+    label: 'Flat Studio',
+    badge: 'Neutral',
+    effects: {
+      eqLow: 0,
+      eqMid: 0,
+      eqHigh: 0,
+      bassBoost: 0,
+      reverbMix: 0,
+      delayTime: 0.25,
+      delayFeedback: 0.3,
+      echoMix: 0,
+      compressorThreshold: -18,
+      compressorRatio: 3,
+      limiterEnabled: true,
+      distortionAmount: 0,
+      noiseReduction: 0,
+      highPassFreq: 20,
+      lowPassFreq: 20000,
+    },
+  },
+  club_bass: {
+    label: 'Club Bass',
+    badge: 'Punchy',
+    effects: {
+      eqLow: 4,
+      eqMid: -1.5,
+      eqHigh: 3,
+      bassBoost: 6,
+      reverbMix: 0.12,
+      delayTime: 0.25,
+      delayFeedback: 0.25,
+      echoMix: 0,
+      compressorThreshold: -22,
+      compressorRatio: 5,
+      limiterEnabled: true,
+      distortionAmount: 4,
+      noiseReduction: 0,
+      highPassFreq: 28,
+      lowPassFreq: 19000,
+    },
+  },
+  podcast_voice: {
+    label: 'Podcast Voice',
+    badge: 'Clarity',
+    effects: {
+      eqLow: -2,
+      eqMid: 3.5,
+      eqHigh: 2.5,
+      bassBoost: 0,
+      reverbMix: 0.04,
+      delayTime: 0.2,
+      delayFeedback: 0.15,
+      echoMix: 0,
+      compressorThreshold: -24,
+      compressorRatio: 4.5,
+      limiterEnabled: true,
+      distortionAmount: 0,
+      noiseReduction: 0.35,
+      highPassFreq: 85,
+      lowPassFreq: 16000,
+    },
+  },
+  crystal_master: {
+    label: 'Crystal Master',
+    badge: 'Bright',
+    effects: {
+      eqLow: 2,
+      eqMid: 1,
+      eqHigh: 4.5,
+      bassBoost: 2,
+      reverbMix: 0.1,
+      delayTime: 0.25,
+      delayFeedback: 0.2,
+      echoMix: 0,
+      compressorThreshold: -16,
+      compressorRatio: 3.5,
+      limiterEnabled: true,
+      distortionAmount: 0,
+      noiseReduction: 0.1,
+      highPassFreq: 30,
+      lowPassFreq: 20000,
+    },
+  },
+  warm_vinyl: {
+    label: 'Warm Vinyl',
+    badge: 'Analog',
+    effects: {
+      eqLow: 3.5,
+      eqMid: 1.5,
+      eqHigh: -3,
+      bassBoost: 2,
+      reverbMix: 0.22,
+      delayTime: 0.32,
+      delayFeedback: 0.28,
+      echoMix: 0.08,
+      compressorThreshold: -20,
+      compressorRatio: 3,
+      limiterEnabled: true,
+      distortionAmount: 10,
+      noiseReduction: 0,
+      highPassFreq: 45,
+      lowPassFreq: 9500,
+    },
+  },
+  lofi_radio: {
+    label: 'Lo-Fi Radio',
+    badge: 'Vintage',
+    effects: {
+      eqLow: -4,
+      eqMid: 4,
+      eqHigh: -6,
+      bassBoost: 0,
+      reverbMix: 0.35,
+      delayTime: 0.38,
+      delayFeedback: 0.42,
+      echoMix: 0.2,
+      compressorThreshold: -26,
+      compressorRatio: 6,
+      limiterEnabled: true,
+      distortionAmount: 18,
+      noiseReduction: 0,
+      highPassFreq: 240,
+      lowPassFreq: 4600,
+    },
+  },
+};
+
+export interface DjSamplerPad {
+  id: string;
+  label: string;
+  keyHint: string;
+  accent: string;
+}
+
+export const DJ_SAMPLER_PADS: DjSamplerPad[] = [
+  { id: 'kick', label: '808 Kick', keyHint: '1', accent: '#8B5CF6' },
+  { id: 'snare', label: 'Punch Snare', keyHint: '2', accent: '#3B82F6' },
+  { id: 'clap', label: 'Club Clap', keyHint: '3', accent: '#22D3EE' },
+  { id: 'hat', label: 'Crisp Hat', keyHint: '4', accent: '#A3E635' },
+  { id: 'sub', label: 'Sub Drop', keyHint: '5', accent: '#F43F5E' },
+  { id: 'riser', label: 'FX Riser', keyHint: '6', accent: '#F59E0B' },
+  { id: 'laser', label: 'Synth Laser', keyHint: '7', accent: '#EC4899' },
+  { id: 'horn', label: 'Air Horn', keyHint: '8', accent: '#10B981' },
+];
+
+/**
+ * Synthesizes real-time DJ performance one-shot hits directly through Web Audio API.
+ */
+export function triggerDjSamplerPad(ctx: AudioContext, destination: AudioNode, padId: string): void {
+  const now = ctx.currentTime;
+  const master = ctx.createGain();
+  master.gain.value = 0.65;
+  master.connect(destination);
+
+  if (padId === 'kick') {
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(160, now);
+    osc.frequency.exponentialRampToValueAtTime(38, now + 0.16);
+    g.gain.setValueAtTime(1, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    osc.connect(g);
+    g.connect(master);
+    osc.start(now);
+    osc.stop(now + 0.38);
+  } else if (padId === 'snare' || padId === 'clap' || padId === 'hat') {
+    const dur = padId === 'hat' ? 0.08 : padId === 'clap' ? 0.22 : 0.18;
+    const len = Math.floor(ctx.sampleRate * dur);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) {
+      const env = Math.exp(-i / (len * (padId === 'hat' ? 0.22 : 0.35)));
+      data[i] = (Math.random() * 2 - 1) * env;
+    }
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const filter = ctx.createBiquadFilter();
+    filter.type = padId === 'hat' ? 'highpass' : 'bandpass';
+    filter.frequency.value = padId === 'hat' ? 7500 : padId === 'clap' ? 1800 : 1200;
+    const g = ctx.createGain();
+    g.gain.value = padId === 'hat' ? 0.55 : 0.85;
+    src.connect(filter);
+    filter.connect(g);
+    g.connect(master);
+    src.start(now);
+
+    if (padId === 'snare') {
+      const tone = ctx.createOscillator();
+      const tg = ctx.createGain();
+      tone.type = 'triangle';
+      tone.frequency.setValueAtTime(210, now);
+      tone.frequency.exponentialRampToValueAtTime(110, now + 0.1);
+      tg.gain.setValueAtTime(0.55, now);
+      tg.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      tone.connect(tg);
+      tg.connect(master);
+      tone.start(now);
+      tone.stop(now + 0.14);
+    }
+  } else if (padId === 'sub') {
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(98, now);
+    osc.frequency.exponentialRampToValueAtTime(28, now + 0.85);
+    g.gain.setValueAtTime(0.95, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.95);
+    osc.connect(g);
+    g.connect(master);
+    osc.start(now);
+    osc.stop(now + 1.0);
+  } else if (padId === 'riser') {
+    const osc = ctx.createOscillator();
+    const filter = ctx.createBiquadFilter();
+    const g = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(180, now);
+    osc.frequency.exponentialRampToValueAtTime(1600, now + 1.1);
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(400, now);
+    filter.frequency.exponentialRampToValueAtTime(3600, now + 1.1);
+    g.gain.setValueAtTime(0.05, now);
+    g.gain.linearRampToValueAtTime(0.55, now + 0.95);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 1.15);
+    osc.connect(filter);
+    filter.connect(g);
+    g.connect(master);
+    osc.start(now);
+    osc.stop(now + 1.2);
+  } else if (padId === 'laser') {
+    const osc = ctx.createOscillator();
+    const g = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(1900, now);
+    osc.frequency.exponentialRampToValueAtTime(140, now + 0.28);
+    g.gain.setValueAtTime(0.5, now);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+    osc.connect(g);
+    g.connect(master);
+    osc.start(now);
+    osc.stop(now + 0.32);
+  } else if (padId === 'horn') {
+    const freqs = [392, 493.88, 587.33];
+    for (const f of freqs) {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(f * 0.96, now);
+      osc.frequency.linearRampToValueAtTime(f, now + 0.06);
+      g.gain.setValueAtTime(0.26, now);
+      g.gain.setValueAtTime(0.24, now + 0.42);
+      g.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+      osc.connect(g);
+      g.connect(master);
+      osc.start(now);
+      osc.stop(now + 0.62);
+    }
+  }
+}
+
+/**
  * Generates real procedural studio stems (Drums, Synth Bass, Ambient Chords) in browser memory
  * so users can immediately test editing, mashups, and DJ mixing without needing external files.
  */
 export async function generateProceduralDemoTrack(
-  preset: 'electronic_124' | 'lofi_96' | 'house_126'
+  preset: 'electronic_124' | 'lofi_96' | 'house_126' | 'synthwave_120'
 ): Promise<{ name: string; buffer: AudioBuffer }> {
   const sampleRate = 44100;
-  const bpm = preset === 'electronic_124' ? 124 : preset === 'lofi_96' ? 96 : 126;
+  const bpm =
+    preset === 'electronic_124'
+      ? 124
+      : preset === 'lofi_96'
+        ? 96
+        : preset === 'synthwave_120'
+          ? 120
+          : 126;
   const beatDur = 60 / bpm;
   const bars = 8;
   const duration = bars * 4 * beatDur;
@@ -478,15 +826,13 @@ export async function generateProceduralDemoTrack(
   master.connect(offline.destination);
 
   const totalBeats = bars * 4;
-  // Kick + Hat + Snare pattern
   for (let b = 0; b < totalBeats; b++) {
     const t = b * beatDur;
-    // Kick on 1 & 3 (or 4-on-the-floor for electronic/house)
     if (preset !== 'lofi_96' || b % 2 === 0) {
       const osc = offline.createOscillator();
       const gain = offline.createGain();
       osc.type = 'sine';
-      osc.frequency.setValueAtTime(preset === 'house_126' ? 150 : 135, t);
+      osc.frequency.setValueAtTime(preset === 'house_126' ? 150 : preset === 'synthwave_120' ? 142 : 135, t);
       osc.frequency.exponentialRampToValueAtTime(42, t + 0.14);
       gain.gain.setValueAtTime(0.9, t);
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.24);
@@ -496,7 +842,6 @@ export async function generateProceduralDemoTrack(
       osc.stop(t + 0.25);
     }
 
-    // Offbeat Hi-hat
     const hatTime = t + beatDur * 0.5;
     if (hatTime < duration) {
       const noiseLen = Math.floor(sampleRate * 0.06);
@@ -517,21 +862,24 @@ export async function generateProceduralDemoTrack(
     }
   }
 
-  // Harmonic Bass & Synth Chords (A minor for electronic_124, C major for house_126, D minor for lofi_96)
   const chordRoots =
     preset === 'electronic_124'
-      ? [220, 174.61, 196, 164.81] // Am - F - G - Em
+      ? [220, 174.61, 196, 164.81]
       : preset === 'house_126'
-        ? [261.63, 220, 174.61, 196] // C - Am - F - G
-        : [293.66, 220, 233.08, 261.63]; // Dm - Am - Bb - C
+        ? [261.63, 220, 174.61, 196]
+        : preset === 'synthwave_120'
+          ? [220, 196, 174.61, 196]
+          : [293.66, 220, 233.08, 261.63];
 
   for (let bar = 0; bar < bars; bar++) {
     const t = bar * 4 * beatDur;
     const root = chordRoots[bar % chordRoots.length];
     const thirdRatio = preset === 'house_126' && bar % 4 === 0 ? 1.25 : 1.1892;
-    const freqs = [root, root * thirdRatio, root * 1.4983];
+    const freqs =
+      preset === 'synthwave_120'
+        ? [root * 2, root * thirdRatio * 2, root * 1.4983 * 2]
+        : [root, root * thirdRatio, root * 1.4983];
 
-    // Warm pad chord
     for (const f of freqs) {
       const osc = offline.createOscillator();
       const filter = offline.createBiquadFilter();
@@ -539,7 +887,7 @@ export async function generateProceduralDemoTrack(
       osc.type = preset === 'lofi_96' ? 'triangle' : 'sawtooth';
       osc.frequency.value = f;
       filter.type = 'lowpass';
-      filter.frequency.value = preset === 'lofi_96' ? 950 : 1850;
+      filter.frequency.value = preset === 'lofi_96' ? 950 : preset === 'synthwave_120' ? 2400 : 1850;
       gain.gain.setValueAtTime(0.001, t);
       gain.gain.linearRampToValueAtTime(0.11, t + 0.2);
       gain.gain.setValueAtTime(0.1, t + 4 * beatDur - 0.2);
@@ -551,17 +899,16 @@ export async function generateProceduralDemoTrack(
       osc.stop(t + 4 * beatDur);
     }
 
-    // Bass pulse on 8th notes
     for (let step = 0; step < 8; step++) {
       const st = t + step * (beatDur * 0.5);
       const osc = offline.createOscillator();
       const filter = offline.createBiquadFilter();
       const gain = offline.createGain();
       osc.type = 'sawtooth';
-      osc.frequency.value = root * 0.5;
+      osc.frequency.value = preset === 'synthwave_120' ? root : root * 0.5;
       filter.type = 'lowpass';
-      filter.frequency.value = 380;
-      gain.gain.setValueAtTime(0.28, st);
+      filter.frequency.value = preset === 'synthwave_120' ? 620 : 380;
+      gain.gain.setValueAtTime(0.24, st);
       gain.gain.exponentialRampToValueAtTime(0.001, st + beatDur * 0.45);
       osc.connect(filter);
       filter.connect(gain);
@@ -577,6 +924,8 @@ export async function generateProceduralDemoTrack(
       ? 'Neon Pulse (124 BPM Am)'
       : preset === 'lofi_96'
         ? 'Midnight Tape (96 BPM Dm)'
-        : 'Velvet House (126 BPM C)';
+        : preset === 'synthwave_120'
+          ? 'Starlight Arp (120 BPM Am)'
+          : 'Velvet House (126 BPM C)';
   return { name: label, buffer };
 }

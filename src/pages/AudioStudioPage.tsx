@@ -1,4 +1,5 @@
 import {
+  Activity,
   ArrowDown,
   ArrowUp,
   AudioWaveform,
@@ -9,6 +10,7 @@ import {
   FolderSync,
   Layers,
   Loader2,
+  Mic,
   Pause,
   Play,
   Repeat,
@@ -23,17 +25,19 @@ import {
   ZoomOut,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { STUDIO_EASE, TabContentTransition } from '../components/MotionPrimitives';
 import { StudioButton } from '../components/StudioButton';
 import { WaveformViewer } from '../components/WaveformViewer';
 import { trackAnonymousEvent } from '../engines/analyticsClient';
 import {
+  AUDIO_FX_PRESETS,
   buildTrackEffectChain,
   concatAudioBuffers,
   decodeAudioFile,
   encodeAudioBufferToMp3,
   encodeAudioBufferToWav,
+  estimateAudioExportBytes,
   extractWaveformPeaks,
   generateProceduralDemoTrack,
   getAudioContext,
@@ -42,9 +46,17 @@ import {
   sliceAudioBuffer,
   type TrackEffectChainNodes,
 } from '../engines/audioEngine';
-import { triggerBlobDownload } from '../engines/storageEngine';
+import { formatBytes, triggerBlobDownload } from '../engines/storageEngine';
 import { useMixoraStore } from '../store/useMixoraStore';
-import { DEFAULT_AUDIO_EFFECTS, type AudioTrackEffects, type AudioTrackModel } from '../types/mixora';
+import {
+  DEFAULT_AUDIO_EFFECTS,
+  type AudioBitDepth,
+  type AudioExportFormat,
+  type AudioSampleRate,
+  type AudioTrackEffects,
+  type AudioTrackModel,
+  type Mp3Bitrate,
+} from '../types/mixora';
 
 const TRACK_COLORS = ['#22D3EE', '#8B5CF6', '#3B82F6', '#A3E635', '#F59E0B'];
 
@@ -82,13 +94,27 @@ export function AudioStudioPage() {
   const [regionEnd, setRegionEnd] = useState<number | null>(null);
   const [inspectorTab, setInspectorTab] = useState<'edit' | 'mixer' | 'effects'>('effects');
   const [exportOpen, setExportOpen] = useState(false);
-  const [exportFormat, setExportFormat] = useState<'wav' | 'mp3'>('wav');
-  const [wavDepth, setWavDepth] = useState<16 | 24>(16);
-  const [mp3Bitrate, setMp3Bitrate] = useState(192);
+  const [exportFormat, setExportFormat] = useState<AudioExportFormat>('wav');
+  const [wavDepth, setWavDepth] = useState<AudioBitDepth>(24);
+  const [mp3Bitrate, setMp3Bitrate] = useState<Mp3Bitrate>(320);
+  const [exportSampleRate, setExportSampleRate] = useState<AudioSampleRate>(44100);
+  const [exportChannels, setExportChannels] = useState<1 | 2>(2);
+  const [normalizePeak, setNormalizePeak] = useState(true);
   const [exportScope, setExportScope] = useState<'full' | 'region'>('full');
   const [exportProgress, setExportProgress] = useState<number | null>(null);
   const [isImporting, setIsImporting] = useState(false);
   const [meterLevel, setMeterLevel] = useState(0);
+  const [spectrumBars, setSpectrumBars] = useState<number[]>(() => Array(16).fill(4));
+
+  // Real Microphone Recorder + Metronome / Tap Tempo state
+  const [isRecordingMic, setIsRecordingMic] = useState(false);
+  const [micRecSec, setMicRecSec] = useState(0);
+  const [metronomeOn, setMetronomeOn] = useState(false);
+  const [metronomeBpm, setMetronomeBpm] = useState(120);
+  const micRecorderRef = useRef<MediaRecorder | null>(null);
+  const micChunksRef = useRef<BlobPart[]>([]);
+  const micTimerRef = useRef<number | null>(null);
+  const tapTimesRef = useRef<number[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const relinkInputRef = useRef<HTMLInputElement | null>(null);
@@ -132,11 +158,149 @@ export function AudioStudioPage() {
     playbackRef.current = null;
     setIsPlaying(false);
     setMeterLevel(0);
+    setSpectrumBars(Array(16).fill(4));
   };
 
   useEffect(() => {
-    return () => stopPlayback();
+    return () => {
+      stopPlayback();
+      if (micTimerRef.current) window.clearInterval(micTimerRef.current);
+      if (micRecorderRef.current && micRecorderRef.current.state !== 'inactive') {
+        micRecorderRef.current.stop();
+      }
+    };
   }, []);
+
+  // Built-in Web Audio Metronome click generator
+  useEffect(() => {
+    if (!metronomeOn) return;
+    let beatCount = 0;
+    const playClick = () => {
+      const ctx = getAudioContext();
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(beatCount % 4 === 0 ? 1180 : 820, now);
+      gain.gain.setValueAtTime(0.24, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.045);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.05);
+      beatCount += 1;
+    };
+    playClick();
+    const id = window.setInterval(playClick, Math.round((60 / Math.max(40, metronomeBpm)) * 1000));
+    return () => window.clearInterval(id);
+  }, [metronomeOn, metronomeBpm]);
+
+  const handleTapTempo = () => {
+    const now = performance.now();
+    const recent = tapTimesRef.current.filter((t) => now - t < 2500);
+    recent.push(now);
+    tapTimesRef.current = recent.slice(-5);
+    if (tapTimesRef.current.length >= 2) {
+      let sum = 0;
+      for (let i = 1; i < tapTimesRef.current.length; i++) {
+        sum += tapTimesRef.current[i] - tapTimesRef.current[i - 1];
+      }
+      const avgMs = sum / (tapTimesRef.current.length - 1);
+      const bpm = Math.max(50, Math.min(220, Math.round(60000 / avgMs)));
+      setMetronomeBpm(bpm);
+    }
+  };
+
+  const toggleMicRecording = async () => {
+    if (isRecordingMic) {
+      micRecorderRef.current?.stop();
+      setIsRecordingMic(false);
+      if (micTimerRef.current) {
+        window.clearInterval(micTimerRef.current);
+        micTimerRef.current = null;
+      }
+      return;
+    }
+
+    if (!navigator.mediaDevices?.getUserMedia) {
+      pushToast({ type: 'error', title: 'Microphone capture is not supported in this browser' });
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/webm')
+          ? 'audio/webm'
+          : '';
+      const recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+      micChunksRef.current = [];
+
+      recorder.ondataavailable = (ev) => {
+        if (ev.data.size > 0) micChunksRef.current.push(ev.data);
+      };
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((tr) => tr.stop());
+        const blob = new Blob(micChunksRef.current, { type: recorder.mimeType || 'audio/webm' });
+        if (blob.size === 0) return;
+        try {
+          const ctx = getAudioContext();
+          const arrayBuf = await blob.arrayBuffer();
+          const decoded = await ctx.decodeAudioData(arrayBuf.slice(0));
+          const peaks = extractWaveformPeaks(decoded, 640);
+          addAudioTrack({
+            id: crypto.randomUUID(),
+            name: `Mic Recording ${tracks.length + 1}`,
+            fileName: `mic-recording-${Date.now()}.webm`,
+            duration: decoded.duration,
+            sampleRate: decoded.sampleRate,
+            channels: decoded.numberOfChannels,
+            startOffset: 0,
+            trimStart: 0,
+            trimEnd: decoded.duration,
+            volume: 1,
+            pan: 0,
+            mute: false,
+            solo: false,
+            group: 'Vocals',
+            fadeIn: 0,
+            fadeOut: 0,
+            reversed: false,
+            speed: 1,
+            pitchSemitones: 0,
+            color: '#F43F5E',
+            peaks,
+            effects: { ...DEFAULT_AUDIO_EFFECTS },
+            buffer: decoded,
+            missingMedia: false,
+          });
+          pushToast({
+            type: 'success',
+            title: `Recorded ${decoded.duration.toFixed(1)}s from microphone`,
+          });
+        } catch (err) {
+          pushToast({
+            type: 'error',
+            title: 'Failed to decode mic recording',
+            detail: err instanceof Error ? err.message : 'Try recording again.',
+          });
+        }
+      };
+
+      micRecorderRef.current = recorder;
+      recorder.start();
+      setMicRecSec(0);
+      setIsRecordingMic(true);
+      micTimerRef.current = window.setInterval(() => setMicRecSec((s) => s + 1), 1000);
+    } catch (err) {
+      pushToast({
+        type: 'error',
+        title: 'Microphone access denied',
+        detail: err instanceof Error ? err.message : 'Allow microphone permission in browser settings.',
+      });
+    }
+  };
 
   // Live update audio effects & mixer parameters while playing
   useEffect(() => {
@@ -230,6 +394,7 @@ export function AudioStudioPage() {
     }
 
     const timeData = new Uint8Array(analyser.fftSize);
+    const freqData = new Uint8Array(analyser.frequencyBinCount);
     const loopEndTarget = regionEnd && regionStart != null && regionEnd > regionStart ? regionEnd : totalTimelineDuration;
     const loopStartTarget = regionEnd && regionStart != null && regionEnd > regionStart ? regionStart : 0;
 
@@ -240,12 +405,22 @@ export function AudioStudioPage() {
       const current = pb.startPlayhead + elapsed;
 
       analyser.getByteTimeDomainData(timeData);
+      analyser.getByteFrequencyData(freqData);
       let maxAmp = 0;
       for (let i = 0; i < timeData.length; i++) {
         const v = Math.abs(timeData[i] - 128) / 128;
         if (v > maxAmp) maxAmp = v;
       }
       setMeterLevel(Math.min(1, maxAmp * 1.4));
+
+      const binsPerBar = Math.max(1, Math.floor(freqData.length / 16));
+      const nextBars: number[] = [];
+      for (let b = 0; b < 16; b++) {
+        let sum = 0;
+        for (let k = 0; k < binsPerBar; k++) sum += freqData[b * binsPerBar + k] ?? 0;
+        nextBars.push(Math.max(6, Math.round((sum / binsPerBar / 255) * 100)));
+      }
+      setSpectrumBars(nextBars);
 
       if (current >= loopEndTarget) {
         if (loopEnabled) {
@@ -521,6 +696,49 @@ export function AudioStudioPage() {
     });
   };
 
+  const estimatedExportSize = useMemo(() => {
+    const dur =
+      exportScope === 'region' && regionStart != null && regionEnd != null && regionEnd > regionStart
+        ? regionEnd - regionStart
+        : totalTimelineDuration;
+    return estimateAudioExportBytes(
+      dur,
+      exportFormat,
+      exportFormat === 'mp3' ? Math.min(48000, exportSampleRate) : exportSampleRate,
+      exportChannels,
+      exportFormat === 'wav' ? wavDepth : mp3Bitrate
+    );
+  }, [exportScope, regionStart, regionEnd, totalTimelineDuration, exportFormat, exportSampleRate, exportChannels, wavDepth, mp3Bitrate]);
+
+  // Keyboard shortcuts for DAW ergonomics
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA' ||
+        target?.tagName === 'SELECT' ||
+        target?.isContentEditable
+      ) {
+        return;
+      }
+      if (e.code === 'Space') {
+        e.preventDefault();
+        if (isPlaying) stopPlayback();
+        else startPlayback(playhead);
+      } else if (e.key.toLowerCase() === 'm' && !e.metaKey && !e.ctrlKey) {
+        addAudioMarker({
+          id: crypto.randomUUID(),
+          time: Number(playhead.toFixed(2)),
+          label: `M${markers.length + 1}`,
+          color: '#F59E0B',
+        });
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isPlaying, playhead, markers.length]);
+
   const handleExport = async () => {
     if (tracks.every((t) => !t.buffer)) {
       pushToast({ type: 'error', title: 'No audio loaded to export' });
@@ -538,13 +756,25 @@ export function AudioStudioPage() {
         exportScope === 'region' && regionStart != null && regionEnd != null && regionEnd > regionStart
           ? { start: regionStart, end: regionEnd }
           : undefined;
+      const renderRate = exportFormat === 'mp3' ? Math.min(48000, exportSampleRate) : exportSampleRate;
       setExportProgress(25);
-      const rendered = await renderMixOffline(tracks, masterVolume, region);
+      const rendered = await renderMixOffline(
+        tracks,
+        masterVolume,
+        region,
+        renderRate,
+        exportChannels,
+        normalizePeak
+      );
       setExportProgress(55);
 
       const safeBase = projectName.replace(/[^a-z0-9\-_\s]/gi, '').trim().replace(/\s+/g, '_') || 'mixora_audio';
       let blob: Blob;
       let ext: string;
+      const qualityTag =
+        exportFormat === 'wav'
+          ? `${wavDepth}bit-${renderRate / 1000}kHz`
+          : `${mp3Bitrate}kbps`;
 
       if (exportFormat === 'wav') {
         blob = encodeAudioBufferToWav(rendered, wavDepth);
@@ -557,14 +787,18 @@ export function AudioStudioPage() {
         ext = 'mp3';
       }
 
-      triggerBlobDownload(blob, `${safeBase}.${ext}`);
+      triggerBlobDownload(blob, `${safeBase}_${qualityTag}.${ext}`);
       trackAnonymousEvent({
         eventType: 'export_success',
         feature: 'audio_studio',
         status: 'success',
         format: exportFormat,
       });
-      pushToast({ type: 'success', title: `Exported ${safeBase}.${ext}` });
+      pushToast({
+        type: 'success',
+        title: `Exported ${safeBase}_${qualityTag}.${ext}`,
+        detail: `${exportChannels === 2 ? 'Stereo' : 'Mono'} · ${normalizePeak ? 'Normalized -1 dBFS' : 'Original dynamics'}`,
+      });
       setExportOpen(false);
     } catch (err) {
       trackAnonymousEvent({
@@ -648,10 +882,22 @@ export function AudioStudioPage() {
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={isImporting}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#1B1B27] hover:bg-[#292938] border border-[#292938] text-xs font-medium text-[#F8FAFC]"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#1B1B27] hover:bg-[#292938] border border-[#292938] text-xs font-medium text-[#F8FAFC] whitespace-nowrap"
           >
             {isImporting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5 text-[#22D3EE]" />}
             Import Audio
+          </button>
+          <button
+            type="button"
+            onClick={() => void toggleMicRecording()}
+            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md border text-xs font-medium whitespace-nowrap transition-colors ${
+              isRecordingMic
+                ? 'bg-[#F43F5E]/20 border-[#F43F5E] text-[#F43F5E] animate-pulse'
+                : 'bg-[#1B1B27] hover:bg-[#292938] border-[#292938] text-[#F8FAFC]'
+            }`}
+          >
+            <Mic className="w-3.5 h-3.5 text-[#F43F5E]" />
+            {isRecordingMic ? `Stop Rec (${micRecSec}s)` : 'Record Mic'}
           </button>
           <button
             type="button"
@@ -804,18 +1050,65 @@ export function AudioStudioPage() {
               </span>
             </div>
 
-            {/* Live Peak Meter */}
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] text-[#94A3B8]">Peak</span>
-              <div className="w-32 h-2 bg-[#09090D] rounded overflow-hidden border border-[#292938]">
-                <div
-                  className="h-full transition-all duration-75"
-                  style={{
-                    width: `${Math.round(meterLevel * 100)}%`,
-                    backgroundColor: meterLevel > 0.85 ? '#F43F5E' : meterLevel > 0.6 ? '#F59E0B' : '#A3E635',
-                  }}
-                />
+            {/* Live Peak Meter + 16-Band FFT Spectrum */}
+            <div className="flex items-center gap-3">
+              <div className="hidden md:flex items-end gap-0.5 h-5 px-2 py-0.5 rounded bg-[#09090D] border border-[#292938]">
+                {spectrumBars.map((h, i) => (
+                  <span
+                    key={i}
+                    className="w-1 rounded-t-sm transition-all duration-75"
+                    style={{
+                      height: `${Math.max(12, h)}%`,
+                      background:
+                        i > 11 ? '#22D3EE' : i > 5 ? '#3B82F6' : '#8B5CF6',
+                    }}
+                  />
+                ))}
               </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-[#94A3B8]">Peak</span>
+                <div className="w-24 h-2 bg-[#09090D] rounded overflow-hidden border border-[#292938]">
+                  <div
+                    className="h-full transition-all duration-75"
+                    style={{
+                      width: `${Math.round(meterLevel * 100)}%`,
+                      backgroundColor: meterLevel > 0.85 ? '#F43F5E' : meterLevel > 0.6 ? '#F59E0B' : '#A3E635',
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Built-in Metronome & Tap Tempo */}
+            <div className="flex items-center gap-1.5 text-xs">
+              <button
+                type="button"
+                onClick={() => setMetronomeOn((m) => !m)}
+                className={`inline-flex items-center gap-1 px-2 py-1 rounded border text-[11px] font-medium transition-colors ${
+                  metronomeOn
+                    ? 'bg-[#8B5CF6]/20 border-[#8B5CF6] text-[#F8FAFC]'
+                    : 'bg-[#09090D] border-[#292938] text-[#94A3B8] hover:text-[#F8FAFC]'
+                }`}
+              >
+                <Activity className="w-3 h-3 text-[#22D3EE]" />
+                Metro
+              </button>
+              <input
+                type="number"
+                min={50}
+                max={220}
+                value={metronomeBpm}
+                onChange={(e) => setMetronomeBpm(Math.max(50, Math.min(220, Number(e.target.value) || 120)))}
+                className="w-12 bg-[#09090D] border border-[#292938] rounded px-1.5 py-0.5 text-[11px] font-mono text-[#F8FAFC]"
+              />
+              <button
+                type="button"
+                onClick={handleTapTempo}
+                className="px-2 py-1 rounded bg-[#1B1B27] hover:bg-[#292938] border border-[#292938] text-[11px] text-[#94A3B8] hover:text-[#F8FAFC]"
+              >
+                Tap
+              </button>
             </div>
 
             {/* Region Selection */}
@@ -1278,6 +1571,29 @@ export function AudioStudioPage() {
                   </button>
                 </div>
 
+                {/* One-Click Mastering & Creative FX Presets */}
+                <div className="space-y-1.5 pb-2 border-b border-[#292938]">
+                  <p className="text-[11px] text-[#94A3B8]">Mastering & FX Presets</p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {Object.entries(AUDIO_FX_PRESETS).map(([key, preset]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => {
+                          updateAudioTrack(selectedTrack.id, { effects: { ...preset.effects } });
+                          pushToast({ type: 'info', title: `Applied "${preset.label}" FX preset` });
+                        }}
+                        className="px-2.5 py-1.5 rounded-md bg-[#1B1B27] hover:bg-[#292938] border border-[#292938] hover:border-[#8B5CF6]/60 text-left transition-colors"
+                      >
+                        <span className="block text-[11px] font-medium text-[#F8FAFC] truncate">
+                          {preset.label}
+                        </span>
+                        <span className="block text-[10px] text-[#22D3EE]">{preset.badge}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 {[
                   { key: 'eqLow' as const, label: 'EQ Low (220 Hz)', min: -12, max: 12, step: 0.5, unit: ' dB' },
                   { key: 'eqMid' as const, label: 'EQ Mid (1.2 kHz)', min: -12, max: 12, step: 0.5, unit: ' dB' },
@@ -1351,9 +1667,15 @@ export function AudioStudioPage() {
               transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
               className="bg-[#14141D] border border-[#292938] rounded-xl max-w-md w-full p-6 space-y-5"
             >
-              <h3 className="font-display text-lg font-semibold text-[#F8FAFC]">Export Master Audio</h3>
+              <div>
+                <h3 className="font-display text-lg font-semibold text-[#F8FAFC]">Export Master Audio</h3>
+                <p className="text-xs text-[#94A3B8] mt-0.5">
+                  Estimated size:{' '}
+                  <span className="font-mono text-[#22D3EE]">{formatBytes(estimatedExportSize)}</span>
+                </p>
+              </div>
 
-              <div className="space-y-3">
+              <div className="space-y-3.5">
                 <div className="space-y-1.5">
                   <label className="text-xs text-[#94A3B8]">Format</label>
                   <div className="grid grid-cols-2 gap-2">
@@ -1362,22 +1684,22 @@ export function AudioStudioPage() {
                       onClick={() => setExportFormat('wav')}
                       className={`py-2 rounded-md border text-xs font-medium transition-colors ${
                         exportFormat === 'wav'
-                          ? 'bg-[#8B5CF6]/20 border-[#8B5CF6] text-[#F8FAFC]'
+                          ? 'studio-nav-bar-glow border-[#8B5CF6] text-[#F8FAFC]'
                           : 'bg-[#1B1B27] border-[#292938] text-[#94A3B8]'
                       }`}
                     >
-                      WAV (Lossless PCM)
+                      WAV (Lossless PCM/Float)
                     </button>
                     <button
                       type="button"
                       onClick={() => setExportFormat('mp3')}
                       className={`py-2 rounded-md border text-xs font-medium transition-colors ${
                         exportFormat === 'mp3'
-                          ? 'bg-[#8B5CF6]/20 border-[#8B5CF6] text-[#F8FAFC]'
+                          ? 'studio-nav-bar-glow border-[#8B5CF6] text-[#F8FAFC]'
                           : 'bg-[#1B1B27] border-[#292938] text-[#94A3B8]'
                       }`}
                     >
-                      MP3 (LAME Encoder)
+                      MP3 (64–320 kbps)
                     </button>
                   </div>
                 </div>
@@ -1385,30 +1707,81 @@ export function AudioStudioPage() {
                 {exportFormat === 'wav' ? (
                   <div className="space-y-1.5">
                     <label className="text-xs text-[#94A3B8]">Bit Depth</label>
-                    <select
-                      value={wavDepth}
-                      onChange={(e) => setWavDepth(Number(e.target.value) as 16 | 24)}
-                      className="w-full bg-[#09090D] border border-[#292938] rounded-md px-3 py-2 text-xs text-[#F8FAFC]"
-                    >
-                      <option value={16}>16-bit PCM (CD Quality)</option>
-                      <option value={24}>24-bit PCM (Studio Master)</option>
-                    </select>
+                    <div className="grid grid-cols-3 gap-2">
+                      {([16, 24, 32] as const).map((d) => (
+                        <button
+                          key={d}
+                          type="button"
+                          onClick={() => setWavDepth(d)}
+                          className={`py-1.5 rounded-md border text-xs font-mono ${
+                            wavDepth === d
+                              ? 'bg-[#22D3EE]/15 border-[#22D3EE] text-[#22D3EE]'
+                              : 'bg-[#09090D] border-[#292938] text-[#94A3B8]'
+                          }`}
+                        >
+                          {d === 32 ? '32-bit Float' : `${d}-bit PCM`}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 ) : (
                   <div className="space-y-1.5">
-                    <label className="text-xs text-[#94A3B8]">MP3 Bitrate</label>
-                    <select
-                      value={mp3Bitrate}
-                      onChange={(e) => setMp3Bitrate(Number(e.target.value))}
-                      className="w-full bg-[#09090D] border border-[#292938] rounded-md px-3 py-2 text-xs text-[#F8FAFC]"
-                    >
-                      <option value={128}>128 kbps (Compact)</option>
-                      <option value={192}>192 kbps (Standard)</option>
-                      <option value={256}>256 kbps (High)</option>
-                      <option value={320}>320 kbps (Maximum)</option>
-                    </select>
+                    <label className="text-xs text-[#94A3B8]">MP3 Quality Bitrate</label>
+                    <div className="grid grid-cols-3 gap-1.5">
+                      {([64, 96, 128, 192, 256, 320] as const).map((br) => (
+                        <button
+                          key={br}
+                          type="button"
+                          onClick={() => setMp3Bitrate(br)}
+                          className={`py-1.5 rounded-md border text-xs font-mono ${
+                            mp3Bitrate === br
+                              ? 'bg-[#8B5CF6]/20 border-[#8B5CF6] text-[#F8FAFC]'
+                              : 'bg-[#09090D] border-[#292938] text-[#94A3B8]'
+                          }`}
+                        >
+                          {br} kbps
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
+
+                <div className="grid grid-cols-2 gap-2.5">
+                  <div className="space-y-1">
+                    <label className="text-xs text-[#94A3B8]">Sample Rate</label>
+                    <select
+                      value={exportSampleRate}
+                      onChange={(e) => setExportSampleRate(Number(e.target.value) as AudioSampleRate)}
+                      className="w-full bg-[#09090D] border border-[#292938] rounded-md px-2.5 py-2 text-xs text-[#F8FAFC]"
+                    >
+                      <option value={22050}>22.05 kHz (Voice)</option>
+                      <option value={44100}>44.1 kHz (CD)</option>
+                      <option value={48000}>48 kHz (Video)</option>
+                      {exportFormat === 'wav' && <option value={96000}>96 kHz (Hi-Res)</option>}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-[#94A3B8]">Channels</label>
+                    <select
+                      value={exportChannels}
+                      onChange={(e) => setExportChannels(Number(e.target.value) as 1 | 2)}
+                      className="w-full bg-[#09090D] border border-[#292938] rounded-md px-2.5 py-2 text-xs text-[#F8FAFC]"
+                    >
+                      <option value={2}>Stereo (2 ch)</option>
+                      <option value={1}>Mono (1 ch)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <label className="flex items-center justify-between pt-2 border-t border-[#292938] text-xs text-[#F8FAFC] cursor-pointer">
+                  <span>Normalize Master Peak (-1 dBFS)</span>
+                  <input
+                    type="checkbox"
+                    checked={normalizePeak}
+                    onChange={(e) => setNormalizePeak(e.target.checked)}
+                    className="accent-[#8B5CF6] w-4 h-4"
+                  />
+                </label>
 
                 <div className="space-y-1.5">
                   <label className="text-xs text-[#94A3B8]">Export Scope</label>
@@ -1447,7 +1820,7 @@ export function AudioStudioPage() {
                     </div>
                     <div className="h-2 bg-[#09090D] rounded overflow-hidden">
                       <div
-                        className="h-full bg-[#8B5CF6] transition-all"
+                        className="h-full studio-accent-gradient transition-all"
                         style={{ width: `${exportProgress}%` }}
                       />
                     </div>

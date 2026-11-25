@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useRef } from 'react';
+import { MixoraLogo } from '../components/MixoraLogo';
 import {
   ScrollReveal,
   STUDIO_EASE,
@@ -74,16 +75,19 @@ export function DashboardPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 py-8 space-y-10">
+    <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
       {/* Welcome & Quick Start */}
-      <section className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[#292938] pb-6">
-        <div>
-          <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-[#F8FAFC]">
-            Creative Dashboard
-          </h1>
-          <p className="text-sm text-[#94A3B8] mt-1">
-            Launch a studio workspace or reopen a project stored locally in your browser.
-          </p>
+      <section className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#292938] pb-6">
+        <div className="flex items-center gap-4">
+          <MixoraLogo className="w-14 h-14 hidden sm:block" />
+          <div>
+            <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight studio-gradient-text">
+              Creative Dashboard
+            </h1>
+            <p className="text-sm text-[#94A3B8] mt-1">
+              Launch a studio workspace or reopen a project stored locally in your browser.
+            </p>
+          </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">

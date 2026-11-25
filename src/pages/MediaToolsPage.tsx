@@ -11,11 +11,13 @@ import {
   encodeAudioBufferToMp3,
   encodeAudioBufferToWav,
   getAudioContext,
+  resampleAudioBuffer,
   sliceAudioBuffer,
 } from '../engines/audioEngine';
 import { formatBytes, triggerBlobDownload } from '../engines/storageEngine';
 import { extractVideoFrames, probeVideoFile } from '../engines/videoEngine';
 import { useMixoraStore } from '../store/useMixoraStore';
+import type { AudioBitDepth, AudioSampleRate, Mp3Bitrate } from '../types/mixora';
 
 export function MediaToolsPage() {
   const pushToast = useMixoraStore((s) => s.pushToast);
@@ -28,7 +30,10 @@ export function MediaToolsPage() {
   const [audioFiles, setAudioFiles] = useState<File[]>([]);
   const [audioBufs, setAudioBufs] = useState<AudioBuffer[]>([]);
   const [audioFormat, setAudioFormat] = useState<'wav' | 'mp3'>('mp3');
-  const [audioBitrate, setAudioBitrate] = useState(192);
+  const [audioBitrate, setAudioBitrate] = useState<Mp3Bitrate>(320);
+  const [audioWavDepth, setAudioWavDepth] = useState<AudioBitDepth>(24);
+  const [audioSampleRate, setAudioSampleRate] = useState<AudioSampleRate>(44100);
+  const [audioChannels, setAudioChannels] = useState<1 | 2>(2);
   const [trimStart, setTrimStart] = useState(0);
   const [trimEnd, setTrimEnd] = useState(0);
   const [normalizeAudio, setNormalizeAudio] = useState(false);
@@ -37,6 +42,8 @@ export function MediaToolsPage() {
   const [videoFile, setVideoFile] = useState<File | null>(null);
   const [videoMeta, setVideoMeta] = useState<{ duration: number; width: number; height: number } | null>(null);
   const [videoWidth, setVideoWidth] = useState(1280);
+  const [videoFps, setVideoFps] = useState(30);
+  const [videoBitrateMbps, setVideoBitrateMbps] = useState(6);
   const [videoThumb, setVideoThumb] = useState<string | null>(null);
 
   // Image Utility State
@@ -92,21 +99,31 @@ export function MediaToolsPage() {
         working = await enhanceAndNormalizeAudio(working, { targetPeakDb: -1.0, clarityBoost: false });
       }
 
+      const targetRate = audioFormat === 'mp3' ? Math.min(48000, audioSampleRate) : audioSampleRate;
+      working = await resampleAudioBuffer(working, targetRate, audioChannels);
+
       const blob =
         audioFormat === 'wav'
-          ? encodeAudioBufferToWav(working, 16)
+          ? encodeAudioBufferToWav(working, audioWavDepth)
           : await encodeAudioBufferToMp3(working, audioBitrate);
 
       const base = audioFiles[0].name.replace(/\.[^.]+$/, '');
-      const suffix = audioBufs.length > 1 ? '_merged' : normalizeAudio ? '_normalized' : '_converted';
-      triggerBlobDownload(blob, `${base}${suffix}.${audioFormat}`);
+      const qualityTag =
+        audioFormat === 'wav'
+          ? `${audioWavDepth}bit_${targetRate / 1000}kHz`
+          : `${audioBitrate}kbps`;
+      const suffix = audioBufs.length > 1 ? '_merged' : normalizeAudio ? '_normalized' : '';
+      triggerBlobDownload(blob, `${base}${suffix}_${qualityTag}.${audioFormat}`);
       trackAnonymousEvent({
         eventType: 'export_success',
         feature: 'media_tools',
         status: 'success',
         format: audioFormat,
       });
-      pushToast({ type: 'success', title: `Downloaded ${base}${suffix}.${audioFormat}` });
+      pushToast({
+        type: 'success',
+        title: `Downloaded ${base}${suffix}_${qualityTag}.${audioFormat}`,
+      });
     } catch (err) {
       pushToast({
         type: 'error',
@@ -177,15 +194,18 @@ export function MediaToolsPage() {
         vid.onloadeddata = () => res();
       });
 
-      const outW = Math.max(320, videoWidth);
-      const outH = Math.round((outW / videoMeta.width) * videoMeta.height);
+      const outW = Math.max(320, Math.round(videoWidth / 2) * 2);
+      const outH = Math.max(240, Math.round(((outW / videoMeta.width) * videoMeta.height) / 2) * 2);
       const canvas = document.createElement('canvas');
       canvas.width = outW;
       canvas.height = outH;
       const ctx = canvas.getContext('2d')!;
 
-      const stream = canvas.captureStream(30);
-      const rec = new MediaRecorder(stream, { mimeType: supported.mimeType, videoBitsPerSecond: 2_500_000 });
+      const stream = canvas.captureStream(videoFps);
+      const rec = new MediaRecorder(stream, {
+        mimeType: supported.mimeType,
+        videoBitsPerSecond: videoBitrateMbps * 1_000_000,
+      });
       const chunks: BlobPart[] = [];
       rec.ondataavailable = (e) => e.data.size > 0 && chunks.push(e.data);
       const done = new Promise<Blob>((resolve) => {
@@ -194,16 +214,23 @@ export function MediaToolsPage() {
 
       rec.start();
       await vid.play();
-      while (!vid.ended && vid.currentTime < Math.min(videoMeta.duration, 20)) {
+      const frameDelay = Math.max(15, Math.round(1000 / videoFps));
+      while (!vid.ended && vid.currentTime < Math.min(videoMeta.duration, 25)) {
         ctx.drawImage(vid, 0, 0, outW, outH);
-        await new Promise((r) => setTimeout(r, 33));
+        await new Promise((r) => setTimeout(r, frameDelay));
       }
       vid.pause();
       rec.stop();
       const blob = await done;
       URL.revokeObjectURL(url);
-      triggerBlobDownload(blob, `${videoFile.name.replace(/\.[^.]+$/, '')}_${outW}w.${supported.ext}`);
-      pushToast({ type: 'success', title: `Exported resized ${outW}×${outH} video` });
+      triggerBlobDownload(
+        blob,
+        `${videoFile.name.replace(/\.[^.]+$/, '')}_${outW}x${outH}_${videoFps}fps_${videoBitrateMbps}M.${supported.ext}`
+      );
+      pushToast({
+        type: 'success',
+        title: `Exported ${outW}×${outH} · ${videoFps}fps · ${videoBitrateMbps} Mbps video`,
+      });
     } catch (err) {
       pushToast({
         type: 'error',
@@ -288,7 +315,7 @@ export function MediaToolsPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+    <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-[#292938] pb-6">
         <div>
           <h1 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-[#F8FAFC]">
@@ -411,7 +438,7 @@ export function MediaToolsPage() {
                 </div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 items-end text-xs">
                 <div className="space-y-1">
                   <label className="text-[#94A3B8]">Output Format</label>
                   <select
@@ -419,37 +446,78 @@ export function MediaToolsPage() {
                     onChange={(e) => setAudioFormat(e.target.value as 'wav' | 'mp3')}
                     className="w-full bg-[#09090D] border border-[#292938] rounded-md px-3 py-2 text-[#F8FAFC]"
                   >
-                    <option value="mp3">MP3</option>
-                    <option value="wav">WAV (Lossless PCM)</option>
+                    <option value="mp3">MP3 (64–320 kbps)</option>
+                    <option value="wav">WAV (Lossless PCM/Float)</option>
                   </select>
                 </div>
 
-                {audioFormat === 'mp3' && (
+                {audioFormat === 'mp3' ? (
                   <div className="space-y-1">
-                    <label className="text-[#94A3B8]">MP3 Quality</label>
+                    <label className="text-[#94A3B8]">MP3 Bitrate</label>
                     <select
                       value={audioBitrate}
-                      onChange={(e) => setAudioBitrate(Number(e.target.value))}
+                      onChange={(e) => setAudioBitrate(Number(e.target.value) as Mp3Bitrate)}
                       className="w-full bg-[#09090D] border border-[#292938] rounded-md px-3 py-2 text-[#F8FAFC]"
                     >
-                      <option value={128}>128 kbps</option>
-                      <option value={192}>192 kbps</option>
-                      <option value={256}>256 kbps</option>
-                      <option value={320}>320 kbps</option>
+                      <option value={64}>64 kbps (Voice Light)</option>
+                      <option value={96}>96 kbps (Compact)</option>
+                      <option value={128}>128 kbps (Standard)</option>
+                      <option value={192}>192 kbps (Good)</option>
+                      <option value={256}>256 kbps (High)</option>
+                      <option value={320}>320 kbps (Studio Max)</option>
+                    </select>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    <label className="text-[#94A3B8]">WAV Bit Depth</label>
+                    <select
+                      value={audioWavDepth}
+                      onChange={(e) => setAudioWavDepth(Number(e.target.value) as AudioBitDepth)}
+                      className="w-full bg-[#09090D] border border-[#292938] rounded-md px-3 py-2 text-[#F8FAFC]"
+                    >
+                      <option value={16}>16-bit PCM (CD)</option>
+                      <option value={24}>24-bit PCM (Studio)</option>
+                      <option value={32}>32-bit IEEE Float</option>
                     </select>
                   </div>
                 )}
 
-                <label className="flex items-center gap-2 py-2 text-[#F8FAFC] cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={normalizeAudio}
-                    onChange={(e) => setNormalizeAudio(e.target.checked)}
-                    className="accent-[#8B5CF6] w-4 h-4"
-                  />
-                  Normalize volume (-1 dBFS)
-                </label>
+                <div className="space-y-1">
+                  <label className="text-[#94A3B8]">Sample Rate</label>
+                  <select
+                    value={audioSampleRate}
+                    onChange={(e) => setAudioSampleRate(Number(e.target.value) as AudioSampleRate)}
+                    className="w-full bg-[#09090D] border border-[#292938] rounded-md px-3 py-2 text-[#F8FAFC]"
+                  >
+                    <option value={22050}>22.05 kHz</option>
+                    <option value={44100}>44.1 kHz (CD)</option>
+                    <option value={48000}>48 kHz (Broadcast)</option>
+                    {audioFormat === 'wav' && <option value={96000}>96 kHz (Hi-Res)</option>}
+                  </select>
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[#94A3B8]">Channels</label>
+                  <select
+                    value={audioChannels}
+                    onChange={(e) => setAudioChannels(Number(e.target.value) as 1 | 2)}
+                    className="w-full bg-[#09090D] border border-[#292938] rounded-md px-3 py-2 text-[#F8FAFC]"
+                  >
+                    <option value={2}>Stereo (2 ch)</option>
+                    <option value={1}>Mono (1 ch)</option>
+                  </select>
+                </div>
               </div>
+
+              <label className="flex items-center gap-2 text-xs text-[#F8FAFC] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={normalizeAudio}
+                  onChange={(e) => setNormalizeAudio(e.target.checked)}
+                  className="accent-[#8B5CF6] w-4 h-4"
+                />
+                Normalize volume (-1 dBFS)
+              </label>
 
               <StudioButton
                 variant="audio"
@@ -511,20 +579,75 @@ export function MediaToolsPage() {
               </div>
 
               <div className="space-y-4 text-xs">
+                <div className="space-y-2">
+                  <span className="text-[#94A3B8]">Quick Resolution Presets</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {[
+                      { label: '360p', w: 640 },
+                      { label: '480p', w: 854 },
+                      { label: '720p HD', w: 1280 },
+                      { label: '1080p FHD', w: 1920 },
+                      { label: 'Source', w: videoMeta.width },
+                    ].map((preset) => (
+                      <button
+                        key={preset.label}
+                        type="button"
+                        onClick={() => setVideoWidth(Math.min(2560, preset.w))}
+                        className={`px-2.5 py-1 rounded border text-[11px] font-medium ${
+                          videoWidth === Math.min(2560, preset.w)
+                            ? 'studio-nav-bar-glow border-[#8B5CF6] text-[#F8FAFC]'
+                            : 'bg-[#09090D] border-[#292938] text-[#94A3B8]'
+                        }`}
+                      >
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="space-y-1.5">
                   <div className="flex justify-between">
-                    <span className="text-[#94A3B8]">Resize Output Width</span>
+                    <span className="text-[#94A3B8]">Custom Output Width</span>
                     <span className="font-mono text-[#F8FAFC]">{videoWidth}px</span>
                   </div>
                   <input
                     type="range"
                     min={320}
-                    max={Math.min(1920, videoMeta.width)}
+                    max={Math.min(2560, Math.max(1920, videoMeta.width))}
                     step={20}
                     value={videoWidth}
                     onChange={(e) => setVideoWidth(Number(e.target.value))}
                     className="w-full"
                   />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <label className="text-[#94A3B8]">Frame Rate</label>
+                    <select
+                      value={videoFps}
+                      onChange={(e) => setVideoFps(Number(e.target.value))}
+                      className="w-full bg-[#09090D] border border-[#292938] rounded-md px-2.5 py-2 text-[#F8FAFC]"
+                    >
+                      <option value={24}>24 fps</option>
+                      <option value={30}>30 fps</option>
+                      <option value={60}>60 fps</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[#94A3B8]">Bitrate Quality</label>
+                    <select
+                      value={videoBitrateMbps}
+                      onChange={(e) => setVideoBitrateMbps(Number(e.target.value))}
+                      className="w-full bg-[#09090D] border border-[#292938] rounded-md px-2.5 py-2 text-[#F8FAFC]"
+                    >
+                      <option value={1.5}>Light (1.5 Mbps)</option>
+                      <option value={4}>Standard (4 Mbps)</option>
+                      <option value={6}>High (6 Mbps)</option>
+                      <option value={12}>Studio (12 Mbps)</option>
+                      <option value={20}>Master (20 Mbps)</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap gap-2">

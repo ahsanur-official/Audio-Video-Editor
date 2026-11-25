@@ -53,9 +53,12 @@ interface MixoraState {
   autosaveEnabled: boolean;
   capabilities: BrowserCapabilities | null;
   toasts: ToastMessage[];
+  sidebarCollapsed: boolean;
 
   // Actions
   navigate: (route: RouteId) => void;
+  toggleSidebarCollapsed: () => void;
+  setSidebarCollapsed: (collapsed: boolean) => void;
   initApp: () => Promise<void>;
   pushToast: (toast: Omit<ToastMessage, 'id'>) => void;
   dismissToast: (id: string) => void;
@@ -161,6 +164,32 @@ export const useMixoraStore = create<MixoraState>((set, get) => ({
   autosaveEnabled: false,
   capabilities: null,
   toasts: [],
+  sidebarCollapsed:
+    typeof window !== 'undefined' && window.localStorage.getItem('mixora_sidebar_collapsed') === 'true',
+
+  toggleSidebarCollapsed: () =>
+    set((s) => {
+      const next = !s.sidebarCollapsed;
+      if (typeof window !== 'undefined') {
+        try {
+          window.localStorage.setItem('mixora_sidebar_collapsed', String(next));
+        } catch {
+          // ignore storage quota errors
+        }
+      }
+      return { sidebarCollapsed: next };
+    }),
+
+  setSidebarCollapsed: (collapsed) => {
+    if (typeof window !== 'undefined') {
+      try {
+        window.localStorage.setItem('mixora_sidebar_collapsed', String(collapsed));
+      } catch {
+        // ignore
+      }
+    }
+    set({ sidebarCollapsed: collapsed });
+  },
 
   navigate: (route) => {
     set({ route });
@@ -408,7 +437,7 @@ export const useMixoraStore = create<MixoraState>((set, get) => ({
       videoOverlays: project.videoOverlays ?? [],
       videoMarkers: project.videoMarkers ?? [],
       selectedVideoClipId: project.videoClips[0]?.id ?? null,
-      colorGrading: project.colorGrading ?? { ...DEFAULT_COLOR_GRADING },
+      colorGrading: { ...DEFAULT_COLOR_GRADING, ...(project.colorGrading ?? {}) },
       colorGradingHistory: [],
     });
     get().navigate(project.type === 'video' ? 'video' : project.type === 'mashup' ? 'mashup' : 'audio');

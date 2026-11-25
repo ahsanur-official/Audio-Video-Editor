@@ -3,6 +3,36 @@ import { DEFAULT_COLOR_GRADING } from '../types/mixora';
 
 const ACCEPTED_VIDEO_EXTENSIONS = ['.mp4', '.webm', '.mov', '.m4v', '.ogv'];
 
+export const VIDEO_GRADIENT_OVERLAYS: Record<
+  string,
+  { label: string; stops: [string, string, string?] }
+> = {
+  none: { label: 'None', stops: ['#1B1B27', '#14141D'] },
+  'violet-cyan': { label: 'Violet → Cyan', stops: ['#8B5CF6', '#3B82F6', '#22D3EE'] },
+  'teal-orange': { label: 'Teal & Orange', stops: ['#0284C7', '#F97316'] },
+  sunset: { label: 'Sunset Vapor', stops: ['#EC4899', '#F59E0B'] },
+  cyberpunk: { label: 'Cyberpunk Neon', stops: ['#A855F7', '#06B6D4'] },
+  golden: { label: 'Golden Hour', stops: ['#D97706', '#FDE047'] },
+  'rose-gold': { label: 'Rose Quartz', stops: ['#F43F5E', '#FB923C'] },
+};
+
+export const COLOR_PRESET_SWATCHES: Record<string, string> = {
+  Natural: 'linear-gradient(135deg, #475569, #1E293B)',
+  Cinematic: 'linear-gradient(135deg, #0F172A, #1E3A5F, #9A3412)',
+  'Teal & Orange': 'linear-gradient(135deg, #0EA5E9, #0F766E, #F97316)',
+  'Cyberpunk Neon': 'linear-gradient(135deg, #8B5CF6, #EC4899, #22D3EE)',
+  'Golden Hour': 'linear-gradient(135deg, #B45309, #F59E0B, #FEF08A)',
+  'Sunset Vapor': 'linear-gradient(135deg, #7E22CE, #EC4899, #FB923C)',
+  'Kodak 2383': 'linear-gradient(135deg, #1E293B, #D97706, #FDE68A)',
+  'Nordic Matte': 'linear-gradient(135deg, #334155, #64748B, #93C5FD)',
+  Warm: 'linear-gradient(135deg, #EA580C, #F59E0B)',
+  Cool: 'linear-gradient(135deg, #1D4ED8, #38BDF8)',
+  Vintage: 'linear-gradient(135deg, #78350F, #A16207, #D6D3D1)',
+  Film: 'linear-gradient(135deg, #14532D, #4D7C0F, #CA8A04)',
+  Moody: 'linear-gradient(135deg, #09090D, #1E1B4B, #334155)',
+  'Black and White': 'linear-gradient(135deg, #09090D, #64748B, #F8FAFC)',
+};
+
 export const COLOR_GRADING_PRESETS: Record<string, ColorGradingSettings> = {
   Natural: { ...DEFAULT_COLOR_GRADING, filterPreset: 'Natural' },
   Cinematic: {
@@ -17,7 +47,89 @@ export const COLOR_GRADING_PRESETS: Record<string, ColorGradingSettings> = {
     redGain: 4,
     vibrance: 14,
     gamma: 0.96,
+    vignette: 22,
     filterPreset: 'Cinematic',
+  },
+  'Teal & Orange': {
+    ...DEFAULT_COLOR_GRADING,
+    contrast: 22,
+    saturation: 10,
+    temperature: 10,
+    highlights: 8,
+    shadows: -8,
+    redGain: 10,
+    blueGain: 12,
+    vibrance: 18,
+    vignette: 24,
+    gradientPreset: 'teal-orange',
+    gradientOpacity: 28,
+    filterPreset: 'Teal & Orange',
+  },
+  'Cyberpunk Neon': {
+    ...DEFAULT_COLOR_GRADING,
+    contrast: 28,
+    saturation: 24,
+    temperature: -18,
+    tint: 22,
+    vibrance: 30,
+    blacks: -12,
+    blueGain: 14,
+    vignette: 32,
+    gradientPreset: 'cyberpunk',
+    gradientOpacity: 36,
+    filterPreset: 'Cyberpunk Neon',
+  },
+  'Golden Hour': {
+    ...DEFAULT_COLOR_GRADING,
+    exposure: 8,
+    contrast: 12,
+    temperature: 34,
+    tint: 6,
+    highlights: 10,
+    saturation: 14,
+    vibrance: 18,
+    vignette: 18,
+    gradientPreset: 'golden',
+    gradientOpacity: 26,
+    filterPreset: 'Golden Hour',
+  },
+  'Sunset Vapor': {
+    ...DEFAULT_COLOR_GRADING,
+    contrast: 16,
+    saturation: 18,
+    temperature: 14,
+    tint: 16,
+    vibrance: 24,
+    vignette: 25,
+    gradientPreset: 'sunset',
+    gradientOpacity: 34,
+    filterPreset: 'Sunset Vapor',
+  },
+  'Kodak 2383': {
+    ...DEFAULT_COLOR_GRADING,
+    contrast: 20,
+    saturation: -6,
+    temperature: 12,
+    highlights: -14,
+    shadows: 10,
+    blacks: -8,
+    redGain: 8,
+    greenGain: 3,
+    gamma: 0.95,
+    vignette: 20,
+    filterPreset: 'Kodak 2383',
+  },
+  'Nordic Matte': {
+    ...DEFAULT_COLOR_GRADING,
+    contrast: -6,
+    saturation: -22,
+    temperature: -20,
+    blacks: 14,
+    lift: 8,
+    blueGain: 10,
+    gamma: 1.04,
+    vignette: 14,
+    filterPreset: 'Nordic Matte',
   },
   Warm: {
     ...DEFAULT_COLOR_GRADING,
@@ -47,6 +159,7 @@ export const COLOR_GRADING_PRESETS: Record<string, ColorGradingSettings> = {
     blacks: 14,
     lift: 10,
     gamma: 1.08,
+    vignette: 30,
     filterPreset: 'Vintage',
   },
   Film: {
@@ -59,6 +172,7 @@ export const COLOR_GRADING_PRESETS: Record<string, ColorGradingSettings> = {
     greenGain: 4,
     redGain: 6,
     vibrance: 10,
+    vignette: 16,
     filterPreset: 'Film',
   },
   Moody: {
@@ -70,6 +184,7 @@ export const COLOR_GRADING_PRESETS: Record<string, ColorGradingSettings> = {
     blacks: -14,
     temperature: -12,
     gamma: 0.9,
+    vignette: 38,
     filterPreset: 'Moody',
   },
   'Black and White': {
@@ -78,6 +193,7 @@ export const COLOR_GRADING_PRESETS: Record<string, ColorGradingSettings> = {
     contrast: 22,
     highlights: 8,
     blacks: -12,
+    vignette: 22,
     filterPreset: 'Black and White',
   },
 };
@@ -148,9 +264,9 @@ function clamp255(v: number): number {
 }
 
 /**
- * Checks if any advanced pixel-level color grading parameters deviate from defaults.
+ * Checks if pixel-level RGB color grading parameters deviate from defaults.
  */
-export function hasActiveColorGrading(g: ColorGradingSettings): boolean {
+function hasActivePixelGrading(g: ColorGradingSettings): boolean {
   return (
     g.brightness !== 0 ||
     g.contrast !== 0 ||
@@ -174,8 +290,20 @@ export function hasActiveColorGrading(g: ColorGradingSettings): boolean {
 }
 
 /**
+ * Checks if any advanced color grading, gradient overlay, vignette, or cinema bars are active.
+ */
+export function hasActiveColorGrading(g: ColorGradingSettings): boolean {
+  return (
+    hasActivePixelGrading(g) ||
+    (g.vignette ?? 0) > 0 ||
+    ((g.gradientPreset ?? 'none') !== 'none' && (g.gradientOpacity ?? 0) > 0) ||
+    Boolean(g.cinemaBars)
+  );
+}
+
+/**
  * Pixel-accurate Color Grading processor applied identically in BOTH real-time preview canvas
- * and final exported video frames.
+ * and final exported video frames, including gradient look overlays, vignette, and cinema bars.
  */
 export function applyColorGradingToCanvas(
   ctx: CanvasRenderingContext2D,
@@ -190,112 +318,156 @@ export function applyColorGradingToCanvas(
   const regionW = width - startX;
   if (regionW <= 0 || height <= 0) return;
 
-  const imgData = ctx.getImageData(startX, 0, regionW, height);
-  const data = imgData.data;
+  if (hasActivePixelGrading(g)) {
+    const imgData = ctx.getImageData(startX, 0, regionW, height);
+    const data = imgData.data;
 
-  const exposureMul = Math.pow(2, g.exposure / 50);
-  const brightOffset = (g.brightness / 100) * 90;
-  const contrastFactor = (100 + g.contrast) / 100;
-  const satFactor = (100 + g.saturation) / 100;
-  const vibranceAmt = g.vibrance / 100;
-  const tempShift = (g.temperature / 100) * 32;
-  const tintShift = (g.tint / 100) * 24;
-  const highlightsAmt = (g.highlights / 100) * 48;
-  const shadowsAmt = (g.shadows / 100) * 48;
-  const whitesAmt = (g.whites / 100) * 42;
-  const blacksAmt = (g.blacks / 100) * 42;
-  const rMul = (1 + g.redGain / 100) * g.gain;
-  const gMul = (1 + g.greenGain / 100) * g.gain;
-  const bMul = (1 + g.blueGain / 100) * g.gain;
-  const liftOffset = (g.lift / 50) * 35;
-  const invGamma = 1 / Math.max(0.2, g.gamma);
+    const exposureMul = Math.pow(2, g.exposure / 50);
+    const brightOffset = (g.brightness / 100) * 90;
+    const contrastFactor = (100 + g.contrast) / 100;
+    const satFactor = (100 + g.saturation) / 100;
+    const vibranceAmt = g.vibrance / 100;
+    const tempShift = (g.temperature / 100) * 32;
+    const tintShift = (g.tint / 100) * 24;
+    const highlightsAmt = (g.highlights / 100) * 48;
+    const shadowsAmt = (g.shadows / 100) * 48;
+    const whitesAmt = (g.whites / 100) * 42;
+    const blacksAmt = (g.blacks / 100) * 42;
+    const rMul = (1 + g.redGain / 100) * g.gain;
+    const gMul = (1 + g.greenGain / 100) * g.gain;
+    const bMul = (1 + g.blueGain / 100) * g.gain;
+    const liftOffset = (g.lift / 50) * 35;
+    const invGamma = 1 / Math.max(0.2, g.gamma);
 
-  // Hue rotation matrix precomputation
-  const hueRad = (g.hue * Math.PI) / 180;
-  const cosH = Math.cos(hueRad);
-  const sinH = Math.sin(hueRad);
-  const applyHue = Math.abs(g.hue) > 0.5;
+    const hueRad = (g.hue * Math.PI) / 180;
+    const cosH = Math.cos(hueRad);
+    const sinH = Math.sin(hueRad);
+    const applyHue = Math.abs(g.hue) > 0.5;
 
-  // Build 256-entry gamma LUT for speed
-  const gammaLut = new Uint8ClampedArray(256);
-  for (let i = 0; i < 256; i++) {
-    gammaLut[i] = Math.round(Math.pow(i / 255, invGamma) * 255);
+    const gammaLut = new Uint8ClampedArray(256);
+    for (let i = 0; i < 256; i++) {
+      gammaLut[i] = Math.round(Math.pow(i / 255, invGamma) * 255);
+    }
+
+    for (let i = 0; i < data.length; i += 4) {
+      let r = data[i];
+      let gr = data[i + 1];
+      let b = data[i + 2];
+
+      r = r * exposureMul * rMul + liftOffset + brightOffset + tempShift;
+      gr = gr * exposureMul * gMul + liftOffset + brightOffset - tintShift;
+      b = b * exposureMul * bMul + liftOffset + brightOffset - tempShift;
+
+      r = (r - 128) * contrastFactor + 128;
+      gr = (gr - 128) * contrastFactor + 128;
+      b = (b - 128) * contrastFactor + 128;
+
+      const lum = (0.299 * r + 0.587 * gr + 0.114 * b) / 255;
+      let tonalDelta = 0;
+      if (lum > 0.5) {
+        const hiWeight = (lum - 0.5) * 2;
+        tonalDelta += highlightsAmt * hiWeight;
+        if (lum > 0.78) {
+          tonalDelta += whitesAmt * ((lum - 0.78) / 0.22);
+        }
+      } else {
+        const shWeight = (0.5 - lum) * 2;
+        tonalDelta += shadowsAmt * shWeight;
+        if (lum < 0.22) {
+          tonalDelta += blacksAmt * ((0.22 - lum) / 0.22);
+        }
+      }
+      r += tonalDelta;
+      gr += tonalDelta;
+      b += tonalDelta;
+
+      const gray = 0.299 * r + 0.587 * gr + 0.114 * b;
+      let effSat = satFactor;
+      if (vibranceAmt !== 0) {
+        const maxC = Math.max(r, gr, b);
+        const minC = Math.min(r, gr, b);
+        const currSat = maxC > 0 ? (maxC - minC) / maxC : 0;
+        effSat += vibranceAmt * (1 - currSat);
+      }
+      r = gray + (r - gray) * effSat;
+      gr = gray + (gr - gray) * effSat;
+      b = gray + (b - gray) * effSat;
+
+      if (applyHue) {
+        const nr =
+          r * (0.213 + cosH * 0.787 - sinH * 0.213) +
+          gr * (0.715 - cosH * 0.715 - sinH * 0.715) +
+          b * (0.072 - cosH * 0.072 + sinH * 0.928);
+        const ng =
+          r * (0.213 - cosH * 0.213 + sinH * 0.143) +
+          gr * (0.715 + cosH * 0.285 + sinH * 0.14) +
+          b * (0.072 - cosH * 0.072 - sinH * 0.283);
+        const nb =
+          r * (0.213 - cosH * 0.213 - sinH * 0.787) +
+          gr * (0.715 - cosH * 0.715 + sinH * 0.715) +
+          b * (0.072 + cosH * 0.928 + sinH * 0.072);
+        r = nr;
+        gr = ng;
+        b = nb;
+      }
+
+      data[i] = gammaLut[clamp255(Math.round(r))];
+      data[i + 1] = gammaLut[clamp255(Math.round(gr))];
+      data[i + 2] = gammaLut[clamp255(Math.round(b))];
+    }
+
+    ctx.putImageData(imgData, startX, 0);
   }
 
-  for (let i = 0; i < data.length; i += 4) {
-    let r = data[i];
-    let gr = data[i + 1];
-    let b = data[i + 2];
+  // Apply post-pixel gradient color tint, radial vignette, and optional 2.39:1 cinema bars
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(startX, 0, regionW, height);
+  ctx.clip();
 
-    // Exposure + Gain + RGB Balance + Lift + Brightness
-    r = r * exposureMul * rMul + liftOffset + brightOffset + tempShift;
-    gr = gr * exposureMul * gMul + liftOffset + brightOffset - tintShift;
-    b = b * exposureMul * bMul + liftOffset + brightOffset - tempShift;
-
-    // Contrast around midpoint 128
-    r = (r - 128) * contrastFactor + 128;
-    gr = (gr - 128) * contrastFactor + 128;
-    b = (b - 128) * contrastFactor + 128;
-
-    // Luminance-targeted Highlights / Shadows / Whites / Blacks
-    const lum = (0.299 * r + 0.587 * gr + 0.114 * b) / 255;
-    let tonalDelta = 0;
-    if (lum > 0.5) {
-      const hiWeight = (lum - 0.5) * 2;
-      tonalDelta += highlightsAmt * hiWeight;
-      if (lum > 0.78) {
-        tonalDelta += whitesAmt * ((lum - 0.78) / 0.22);
-      }
+  const gradSpec = VIDEO_GRADIENT_OVERLAYS[g.gradientPreset ?? 'none'];
+  if (gradSpec && (g.gradientPreset ?? 'none') !== 'none' && (g.gradientOpacity ?? 0) > 0) {
+    const grad = ctx.createLinearGradient(0, 0, width, height);
+    grad.addColorStop(0, gradSpec.stops[0]);
+    if (gradSpec.stops[2]) {
+      grad.addColorStop(0.5, gradSpec.stops[1]);
+      grad.addColorStop(1, gradSpec.stops[2]);
     } else {
-      const shWeight = (0.5 - lum) * 2;
-      tonalDelta += shadowsAmt * shWeight;
-      if (lum < 0.22) {
-        tonalDelta += blacksAmt * ((0.22 - lum) / 0.22);
-      }
+      grad.addColorStop(1, gradSpec.stops[1]);
     }
-    r += tonalDelta;
-    gr += tonalDelta;
-    b += tonalDelta;
-
-    // Saturation & Vibrance
-    const gray = 0.299 * r + 0.587 * gr + 0.114 * b;
-    let effSat = satFactor;
-    if (vibranceAmt !== 0) {
-      const maxC = Math.max(r, gr, b);
-      const minC = Math.min(r, gr, b);
-      const currSat = maxC > 0 ? (maxC - minC) / maxC : 0;
-      effSat += vibranceAmt * (1 - currSat);
-    }
-    r = gray + (r - gray) * effSat;
-    gr = gray + (gr - gray) * effSat;
-    b = gray + (b - gray) * effSat;
-
-    // Optional Hue rotation
-    if (applyHue) {
-      const nr =
-        r * (0.213 + cosH * 0.787 - sinH * 0.213) +
-        gr * (0.715 - cosH * 0.715 - sinH * 0.715) +
-        b * (0.072 - cosH * 0.072 + sinH * 0.928);
-      const ng =
-        r * (0.213 - cosH * 0.213 + sinH * 0.143) +
-        gr * (0.715 + cosH * 0.285 + sinH * 0.14) +
-        b * (0.072 - cosH * 0.072 - sinH * 0.283);
-      const nb =
-        r * (0.213 - cosH * 0.213 - sinH * 0.787) +
-        gr * (0.715 - cosH * 0.715 + sinH * 0.715) +
-        b * (0.072 + cosH * 0.928 + sinH * 0.072);
-      r = nr;
-      gr = ng;
-      b = nb;
-    }
-
-    // Gamma LUT + clamp
-    data[i] = gammaLut[clamp255(Math.round(r))];
-    data[i + 1] = gammaLut[clamp255(Math.round(gr))];
-    data[i + 2] = gammaLut[clamp255(Math.round(b))];
+    ctx.globalCompositeOperation = 'soft-light';
+    ctx.globalAlpha = Math.min(0.85, (g.gradientOpacity ?? 0) / 100);
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, width, height);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
   }
 
-  ctx.putImageData(imgData, startX, 0);
+  if ((g.vignette ?? 0) > 0) {
+    const strength = Math.min(0.9, ((g.vignette ?? 0) / 100) * 0.85);
+    const radius = Math.hypot(width, height) * 0.54;
+    const radGrad = ctx.createRadialGradient(
+      width / 2,
+      height / 2,
+      radius * 0.35,
+      width / 2,
+      height / 2,
+      radius
+    );
+    radGrad.addColorStop(0, 'rgba(0,0,0,0)');
+    radGrad.addColorStop(1, `rgba(0,0,0,${strength})`);
+    ctx.fillStyle = radGrad;
+    ctx.fillRect(0, 0, width, height);
+  }
+
+  if (g.cinemaBars) {
+    const barH = Math.round(height * 0.115);
+    ctx.fillStyle = '#050508';
+    ctx.fillRect(0, 0, width, barH);
+    ctx.fillRect(0, height - barH, width, barH);
+  }
+
+  ctx.restore();
 }
 
 /**

@@ -1,4 +1,5 @@
 import { Cpu, HardDrive, Lock, ShieldCheck, Terminal } from 'lucide-react';
+import { MixoraLogo } from '../components/MixoraLogo';
 import { ScrollReveal, StaggerGroup, StaggerItem } from '../components/MotionPrimitives';
 import { useMixoraStore } from '../store/useMixoraStore';
 
@@ -6,15 +7,18 @@ export function AboutPage() {
   const capabilities = useMixoraStore((s) => s.capabilities);
 
   return (
-    <div className="max-w-4xl mx-auto px-4 sm:px-6 py-10 space-y-10">
-      <ScrollReveal distance={16} className="border-b border-[#292938] pb-6 space-y-2">
-        <h1 className="font-display text-3xl font-bold tracking-tight text-[#F8FAFC]">
-          About MIXORA
-        </h1>
-        <p className="text-sm text-[#94A3B8] leading-relaxed">
-          MIXORA is a free, browser-first audio and video creative studio engineered around strict
-          local processing, zero user accounts, and direct device downloads.
-        </p>
+    <div className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10">
+      <ScrollReveal distance={16} className="border-b border-[#292938] pb-6 flex flex-col sm:flex-row sm:items-center gap-5">
+        <MixoraLogo className="w-20 h-20" />
+        <div className="space-y-2">
+          <h1 className="font-display text-3xl font-bold tracking-tight studio-gradient-text">
+            About MIXORA
+          </h1>
+          <p className="text-sm text-[#94A3B8] leading-relaxed max-w-3xl">
+            MIXORA is a free, browser-first audio and video creative studio engineered around strict
+            local processing, zero user accounts, and direct device downloads.
+          </p>
+        </div>
       </ScrollReveal>
 
       <StaggerGroup className="grid grid-cols-1 md:grid-cols-2 gap-5">

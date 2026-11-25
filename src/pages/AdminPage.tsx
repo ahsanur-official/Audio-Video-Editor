@@ -24,6 +24,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { MixoraLogo } from '../components/MixoraLogo';
 import { triggerBlobDownload } from '../engines/storageEngine';
 import { useMixoraStore } from '../store/useMixoraStore';
 
@@ -390,10 +391,10 @@ export function AdminPage() {
 
   return (
     <div className="min-h-screen bg-[#09090D] text-[#F8FAFC]">
-      <header className="bg-[#14141D] border-b border-[#292938] px-6 h-16 flex items-center justify-between gap-4">
+      <header className="bg-[#14141D] border-b border-[#292938] px-4 sm:px-6 lg:px-8 h-[72px] flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <BarChart3 className="w-5 h-5 text-[#8B5CF6]" />
-          <span className="font-display text-lg font-bold tracking-tight">MIXORA Admin Analytics</span>
+          <MixoraLogo className="w-11 h-11" />
+          <span className="font-display text-lg font-bold tracking-tight studio-gradient-text">MIXORA Admin Analytics</span>
         </div>
 
         <div className="flex items-center gap-2">
@@ -432,7 +433,7 @@ export function AdminPage() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-6 py-8 space-y-8">
+      <main className="w-full max-w-[1920px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Privacy Guarantee & Controls */}
         <div className="flex flex-wrap items-center justify-between gap-4 bg-[#14141D] border border-[#292938] rounded-lg px-4 py-3 text-xs">
           <div className="flex items-center gap-2 text-[#A3E635]">
